@@ -10,12 +10,23 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 
 dependencies = [
-    # TODO: fill out
+    "typer",
+    "pydantic",
+    "loguru"
 ]
 
 [dependency-groups]
 
+
+torch-train = [
+    "torch~=2.7.1",
+    "torchvision",
+    "pillow>=10",
+    "transformers>=4.55.4",
+]
+
 dev = [
+    "tqdm",
     "dvc",
     "dvc-s3",
     "pre-commit",
@@ -80,3 +91,12 @@ no_implicit_optional = true
 check_untyped_defs = true
 warn_return_any = true
 show_error_codes = true
+
+
+[tool.poe.tasks.scan-annots-sky-1]
+help="Test annots parsing over all annotations of Sky Dataset 1"
+cmd="python cow_detect/utils/annotations.py data/sky/Dataset1/ann/"
+
+[tool.poe.tasks.scan-annots-sky-2]
+help="Test annots parsing over all annotations of Sky Dataset 2"
+cmd="python cow_detect/utils/annotations.py data/sky/Dataset2/ann/"
