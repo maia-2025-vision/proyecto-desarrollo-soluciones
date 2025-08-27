@@ -93,6 +93,9 @@ warn_return_any = true
 show_error_codes = true
 
 
+[tool.poe.tasks.pre-commit]
+cmd="pre-commit run --all-files"
+
 [tool.poe.tasks.scan-annots-sky-1]
 help="Test annots parsing over all annotations of Sky Dataset 1"
 cmd="python cow_detect/utils/annotations.py data/sky/Dataset1/ann/"

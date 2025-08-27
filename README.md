@@ -18,6 +18,14 @@ uv sync --native-tls --devq
 source .venv/bin/activate
 ```
 
+## Activar checks de código automáticos antes de commit
+
+Altamente recomendado!
+
+```bash
+pre-commit install
+```
+
 ### Obtener datos de repo remoto DVC remoto
 
 ```bash

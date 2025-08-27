@@ -1,26 +1,30 @@
 import json
 from collections import Counter
 from pathlib import Path
-from pydantic import BaseModel
-from loguru import logger
 
+from loguru import logger
+from pydantic import BaseModel
 from typer import Typer
 
 cli = Typer()
 
 
 class BboxMinMax(BaseModel):
+    """A bounding box defined by a top-left corner and a bottom-right corner."""
+
     x_min: int
     y_min: int
     x_max: int
     y_max: int
 
     def as_list(self) -> list[int]:
+        """Convert myself to a list."""
         return [self.x_min, self.y_min, self.x_max, self.y_max]
 
 
-def parse_yolo_annotation_line(line: str, *, img_width: int, img_height: int) \
-    -> tuple[int, BboxMinMax]:
+def parse_yolo_annotation_line(
+    line: str, *, img_width: int, img_height: int
+) -> tuple[int, BboxMinMax]:
     """Parse a yolo formatted annotation line.
 
     I.e. we assume the format
@@ -48,17 +52,17 @@ def parse_yolo_annotation_line(line: str, *, img_width: int, img_height: int) \
 
 
 def parse_yolo_annotation_file(
-    annotation_path: Path,
-    img_width: int,
-    img_height: int
+    annotation_path: Path, img_width: int, img_height: int
 ) -> tuple[list[list[int]], list[int]]:
-
+    """Parse a plain text file consisting of yolo formatted annotations."""
     boxes: list[list[int]] = []  # [x_min, y_min, x_max, y_max] formatted boxes
     labels: list[int] = []  # class-id for each box
 
-    with annotation_path.open('rt') as f:
+    with annotation_path.open("rt") as f:
         for line in f.readlines():
-            class_id, bbox = parse_yolo_annotation_line(line, img_width=img_width, img_height=img_height)
+            class_id, bbox = parse_yolo_annotation_line(
+                line, img_width=img_width, img_height=img_height
+            )
             boxes.append(bbox.as_list())
             labels.append(class_id)
 
@@ -66,9 +70,9 @@ def parse_yolo_annotation_file(
 
 
 def parse_json_annotations_file(
-    annotation_path: Path,
-    class_name_to_id: dict[str, int]
+    annotation_path: Path, class_name_to_id: dict[str, int]
 ) -> tuple[list[list[int]], list[int]]:
+    """Parse rectangle type annotations assumed to be in "objects" member of the json document."""
     obj = json.loads(annotation_path.read_text())
 
     annots = obj["objects"]
@@ -106,7 +110,7 @@ def parse_json_annotations_file(
 
 @cli.command()
 def scan_json_annots(annots_dir: Path):
-    """Test parsing over a directory of json annots"""
+    """Test parsing over a directory of json annotations."""
     import tqdm
 
     annot_files = list(annots_dir.glob("*.json"))
