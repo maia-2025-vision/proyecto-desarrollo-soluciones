@@ -31,3 +31,14 @@ pre-commit install
 ```bash
 dvc pull  # .venv debe estar activado
 ```
+
+
+## Entrenamiento
+
+Ejemplo:
+
+```bash
+python cow_detect/train/teo/train_v1.py \
+  --cfg data/training/teo/v1/train_cfg.yaml \
+  --save-path data/training/teo/v1/faster-rcnn.pth
+```

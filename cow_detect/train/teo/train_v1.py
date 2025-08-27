@@ -69,9 +69,9 @@ class TrainCfg(BaseModel):
 
 @cli.command()
 def train_faster_rcnn(
-    train_cfg_path: Path = typer.Option(..., "where to get the config from"),
-    model_path: Path = typer.Option(..., "where to leave the final model"),
-    print_every_batches: int = 3,
+    train_cfg_path: Path = typer.Option(..., "--cfg", help="where to get the config from"),
+    save_path: Path = typer.Option(..., "--save-path", "-o", help="where to leave the final model"),
+    print_every_batches: int = typer.Option(3, "-p", help="print error metrics these many batches"),
 ):
     """Train a faster rcnn model with a given config and leaving result in a given model_path."""
     # Set up the device
@@ -144,8 +144,8 @@ def train_faster_rcnn(
                 )
 
     # Save the fine-tuned model
-    torch.save(model.state_dict(), model_path)
-    logger.info("Fine-tuning complete. Model saved.")
+    torch.save(model.state_dict(), save_path)
+    logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,7 @@
-class DataLoaderParams:
+from pydantic import BaseModel
+
+
+class DataLoaderParams(BaseModel):
     """Parameters for the data loader."""
 
     batch_size: int
@@ -6,7 +9,7 @@ class DataLoaderParams:
     num_workers: int
 
 
-class OptimizerParams:
+class OptimizerParams(BaseModel):
     """Parameters for the optimizer."""
 
     learning_rate: float
