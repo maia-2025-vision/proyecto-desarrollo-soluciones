@@ -1,3 +1,5 @@
+import gc
+import math
 import sys
 from pathlib import Path
 from pprint import pprint
@@ -96,8 +98,9 @@ class Trainer:
         train_losses = []
         train_ious = []
 
-        n_batches = len(train_data_loader.dataset) // train_data_loader.batch_size
+        n_batches = int(math.ceil(len(train_data_loader.dataset) // train_data_loader.batch_size))
         pbar = tqdm.tqdm(train_data_loader, total=n_batches)
+        pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
         for images, targets in pbar:
             # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
             model.train()
@@ -147,9 +150,11 @@ class Trainer:
         valid_scores = []
         valid_ious = []
 
-        n_batches = len(valid_data_loader.dataset) // valid_data_loader.batch_size
+        n_batches = int(math.ceil(len(valid_data_loader.dataset) / valid_data_loader.batch_size))
         with torch.no_grad():
             pbar = tqdm.tqdm(valid_data_loader, total=n_batches)
+            pbar.set_description("Epoch 0: Validation: avg.loss=..... avg.mean.iou=.....")
+
             for images, targets in pbar:
                 # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
                 images = [image.to(self.device) for image in images]
@@ -262,7 +267,13 @@ def train_faster_rcnn(
     # Save the fine-tuned model
     torch.save(model.state_dict(), save_path)
     logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
-    sys.exit(0)
+
+    del trainer
+    del train_data_loader
+    del valid_data_loader
+    del optimizer
+    del model
+    gc.collect()
 
 
 if __name__ == "__main__":
