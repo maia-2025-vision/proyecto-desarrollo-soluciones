@@ -49,6 +49,11 @@ def parse_yolo_annotation_line(
         return int(class_id), BboxMinMax(
             x_min=int(x_min), y_min=int(y_min), x_max=int(x_max), y_max=int(y_max)
         )
+    else:
+        raise ValueError(
+            f"Expected line to have 5 pieces but has {len(parts)},"
+            f"line={line!r}, parts={parts!r}"
+        )
 
 
 def parse_yolo_annotation_file(
@@ -76,7 +81,7 @@ def parse_json_annotations_file(
     obj = json.loads(annotation_path.read_text())
 
     annots = obj["objects"]
-    ignored_cnts = Counter()
+    ignored_cnts: Counter[str] = Counter()
 
     boxes: list[list[int]] = []
     labels: list[int] = []
@@ -109,7 +114,7 @@ def parse_json_annotations_file(
 
 
 @cli.command()
-def scan_json_annots(annots_dir: Path):
+def scan_json_annots(annots_dir: Path) -> None:
     """Test parsing over a directory of json annotations."""
     import tqdm
 

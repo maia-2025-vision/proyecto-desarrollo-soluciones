@@ -22,6 +22,7 @@ torch-train = [
     "torch~=2.7.1",
     "torchvision",
     "pillow>=10",
+    "mlflow",
     "transformers>=4.55.4",
 ]
 
@@ -32,7 +33,9 @@ dev = [
     "pre-commit",
     "mypy",
     "ruff",
-    "poethepoet"
+    "poethepoet",
+    "types-PyYAML",
+    "types-tqdm"
 ]
 
 [build-system]
@@ -82,8 +85,8 @@ extend-immutable-calls = [
 ]
 
 [tool.mypy]
-python_version = "3.10"
-exclude='^(.venv/|model/|research/)'
+python_version = "3.13"
+exclude='^(.venv|model|research|.dvc|data|.*scratch)/'
 disallow_untyped_defs = true
 disallow_any_unimported = true
 explicit_package_bases = true
@@ -95,6 +98,9 @@ show_error_codes = true
 
 [tool.poe.tasks.pre-commit]
 cmd="pre-commit run --all-files"
+
+[tool.poe.tasks.type-check]
+cmd="mypy ./"
 
 [tool.poe.tasks.scan-annots-sky-1]
 help="Test annots parsing over all annotations of Sky Dataset 1"

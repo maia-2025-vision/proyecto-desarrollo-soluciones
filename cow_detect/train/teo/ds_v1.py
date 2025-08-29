@@ -1,13 +1,20 @@
 # Define the dataset class for a custom dataset
+import math
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeAlias
 
 import torch
-import torchvision.transforms
+import torchvision.transforms  # type: ignore[import-untyped]
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset
 
 from cow_detect.utils.annotations import parse_json_annotations_file
+
+# Type produced by a detection model in train mode
+TargetType: type = dict[str, torch.Tensor]
+TransformType: type = Callable[[torch.Tensor, TargetType], tuple[torch.Tensor, TargetType]]
 
 
 class SkyDataset(Dataset):
@@ -19,8 +26,8 @@ class SkyDataset(Dataset):
         root_dir: Path,
         image_paths: list[Path],
         annot_subdir: str = "ann",
-        transforms=None,
-    ):
+        transforms: TransformType | None = None,  # TODO: what should the type really be?
+    ) -> None:
         self.name = name
         self.root_dir = root_dir
         self.transforms = transforms
@@ -47,11 +54,15 @@ class SkyDataset(Dataset):
         self.class_name_to_id = {"cattle": 1}  # Class 0 is reserved for background
         self.img_to_tensor = torchvision.transforms.ToTensor()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Get the length of the dataset."""
         return len(self.image_paths)
 
-    def __getitem__(self, idx: int):
+    def num_batches(self, batch_size: int) -> int:
+        """Get the number of batches per epoch."""
+        return int(math.ceil(len(self.image_paths) / batch_size))
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Get the i-th item from this dataset."""
         img_path = self.image_paths[idx]
         # This simple rule works for SKY but it doesnt work for ICAERUS

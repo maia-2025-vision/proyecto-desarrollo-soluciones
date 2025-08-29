@@ -2,6 +2,7 @@ import math
 from pathlib import Path
 
 from loguru import logger
+from torch.utils.data import DataLoader
 
 
 def train_validation_split(
@@ -62,13 +63,10 @@ def train_validation_split(
         raise NotImplementedError(f"Strategy={strategy!r} not yet implemented")
 
 
-# %%
+def get_num_batches(dl: DataLoader) -> int:
+    """Estimate number of batches produced by a dataloader."""
+    n_items = len(dl.dataset)  # type: ignore[arg-type]
+    batch_size = dl.batch_size
+    assert isinstance(batch_size, int)
 
-
-def _interactive_testing_():
-    # %%
-    t, v = train_validation_split(Path("data/sky"), valid_fraction=0.1)
-    # %%
-
-
-# %%
+    return int(math.ceil(n_items / batch_size))
