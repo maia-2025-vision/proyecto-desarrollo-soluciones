@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from pprint import pprint
 
@@ -65,7 +66,6 @@ def _interactive_test():
 class TrainCfg(BaseModel):
     """Parameters fort training."""
 
-    data_root_dir: Path = Path("data/sky/Dataset1")
     train_fraction: float
     valid_fraction: float
     data_loader: DataLoaderParams
@@ -158,7 +158,8 @@ class Trainer:
                 prediction_dicts = model(images, targets)
                 # In eval mode there are no losses but: boxes, labels, confidence scores
                 try:
-                    avg_score = np.nanmean(torch.mean(d["scores"]).item() for d in prediction_dicts)
+                    scores = [torch.mean(d["scores"]).item() for d in prediction_dicts]
+                    avg_score = np.nanmean(scores)
                 except (KeyError, TypeError, ValueError, RuntimeError):
                     pprint(prediction_dicts)
                     raise
@@ -180,6 +181,7 @@ class Trainer:
 @cli.command()
 def train_faster_rcnn(
     train_cfg_path: Path = typer.Option(..., "--cfg", help="where to get the config from"),
+    train_data: Path = typer.Option(..., "--train-data", help="where to get the data from"),
     save_path: Path = typer.Option(..., "--save-path", "-o", help="where to leave the final model"),
     print_every_batches: int = typer.Option(3, "-p", help="print error metrics these many batches"),
 ):
@@ -192,17 +194,19 @@ def train_faster_rcnn(
     train_cfg: TrainCfg = TrainCfg.model_validate(cfg_dict)
 
     train_img_paths, valid_img_paths = train_validation_split(
-        imgs_dir=train_cfg.data_root_dir / "img",
+        imgs_dir=train_data / "img",
         train_fraction=train_cfg.train_fraction,
         valid_fraction=train_cfg.valid_fraction,
     )
     # Create the dataset and dataloader
     train_data_set = SkyDataset(
-        root_dir=train_cfg.data_root_dir,
+        name="train",
+        root_dir=train_data,
         image_paths=train_img_paths,
     )
     valid_data_set = SkyDataset(
-        root_dir=train_cfg.data_root_dir,
+        name="valid",
+        root_dir=train_data,
         image_paths=valid_img_paths,
     )
 
@@ -248,7 +252,7 @@ def train_faster_rcnn(
     )
 
     # Training loop
-    num_epochs = 10
+    num_epochs = train_cfg.num_epochs
 
     for epoch in range(num_epochs):
         # Train loop:
@@ -258,6 +262,7 @@ def train_faster_rcnn(
     # Save the fine-tuned model
     torch.save(model.state_dict(), save_path)
     logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
