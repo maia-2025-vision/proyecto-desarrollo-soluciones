@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 from pprint import pprint
 
@@ -31,7 +32,7 @@ from cow_detect.utils.versioning import get_cfg_hash, get_git_revision_hash
 cli = Typer(pretty_exceptions_show_locals=False)
 
 # Set mlflow backed file store under data dir
-mlflow.set_tracking_uri("file://./data/mlruns")
+mlflow.set_tracking_uri(f"file://{os.getcwd()}/data/mlruns")
 
 
 def get_model(num_classes: int) -> FasterRCNN:  # type: ignore[no-any-unimported]
