@@ -31,6 +31,7 @@ dev = [
     "dvc",
     "dvc-s3",
     "pre-commit",
+    "marimo",
     "mypy",
     "ruff",
     "poethepoet",
@@ -69,6 +70,7 @@ ignore = [
     "D100", # Missing docstring in public module
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
+    "UP040", # Type alias `X` uses `TypeAlias` annotation instead of the `type` keyword
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -97,10 +99,16 @@ show_error_codes = true
 
 
 [tool.poe.tasks.pre-commit]
+help="runs formatting checks (e.g. ruff) on commited files"
 cmd="pre-commit run --all-files"
 
 [tool.poe.tasks.type-check]
-cmd="mypy ./"
+help="run mypy typechecking on the whole project (takes a couple of secs)"
+cmd="mypy --config pyproject.toml ./"
+
+[tool.poe.tasks.mlflow-server]
+help="runs mlflow server assuming backend store under ./data/mlruns"
+cmd="mlflow server --backend-store-uri file://$PWD/data/mlruns"
 
 [tool.poe.tasks.scan-annots-sky-1]
 help="Test annots parsing over all annotations of Sky Dataset 1"

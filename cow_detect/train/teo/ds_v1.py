@@ -13,8 +13,8 @@ from torch.utils.data import Dataset
 from cow_detect.utils.annotations import parse_json_annotations_file
 
 # Type produced by a detection model in train mode
-TargetType: type = dict[str, torch.Tensor]
-TransformType: type = Callable[[torch.Tensor, TargetType], tuple[torch.Tensor, TargetType]]
+TargetType: TypeAlias = dict[str, torch.Tensor]
+TransformType: TypeAlias = Callable[[torch.Tensor, TargetType], tuple[torch.Tensor, TargetType]]
 
 
 class SkyDataset(Dataset):
@@ -62,7 +62,7 @@ class SkyDataset(Dataset):
         """Get the number of batches per epoch."""
         return int(math.ceil(len(self.image_paths) / batch_size))
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, dict[str, torch.Tensor], Path]:
         """Get the i-th item from this dataset."""
         img_path = self.image_paths[idx]
         # This simple rule works for SKY but it doesnt work for ICAERUS
@@ -77,7 +77,6 @@ class SkyDataset(Dataset):
         image_pt = self.img_to_tensor(image)
         del image
 
-        assert annotation_path.exists()
         boxes, labels = parse_json_annotations_file(annotation_path, self.class_name_to_id)
 
         target = {}
@@ -96,4 +95,4 @@ class SkyDataset(Dataset):
         if self.transforms:
             image_pt, target = self.transforms(image_pt, target)
 
-        return image_pt, target
+        return image_pt, target, img_path

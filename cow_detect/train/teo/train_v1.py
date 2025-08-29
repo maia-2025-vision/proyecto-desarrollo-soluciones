@@ -52,13 +52,13 @@ def get_model(num_classes: int) -> FasterRCNN:  # type: ignore[no-any-unimported
     return model
 
 
-def faster_rcnn_custom_collate_fn(batch) -> tuple:
+def faster_rcnn_custom_collate_fn(batch: list[object]) -> tuple:
     """Custom batch collate function.
 
-    TODO: check this does the right thing...
+    Verified!
+    Run: marimo edit research/try-out-dataloading.py
     """
-    print(f"{batch=!r}")
-    return tuple(zip(*batch, strict=False))
+    return tuple(zip(*batch, strict=True))
 
 
 def _interactive_test() -> None:
@@ -107,7 +107,7 @@ class Trainer:
         n_batches = get_num_batches(train_data_loader)
         pbar = tqdm.tqdm(train_data_loader, total=n_batches)
         pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
-        for images, targets in pbar:
+        for images, targets, _file_paths in pbar:
             # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
             model.train()
             images = [image.to(self.device) for image in images]
@@ -163,7 +163,7 @@ class Trainer:
             pbar = tqdm.tqdm(valid_data_loader, total=n_batches)
             pbar.set_description("Epoch 0: Validation: avg.loss=..... avg.mean.iou=.....")
 
-            for images, targets in pbar:
+            for images, targets, _fpaths in pbar:
                 # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
                 images = [image.to(self.device) for image in images]
                 targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
@@ -277,6 +277,7 @@ def train_faster_rcnn(
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
+        mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
         mlflow.log_param("model_class", type(model).__name__)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)
