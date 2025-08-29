@@ -1,11 +1,15 @@
 from pathlib import Path
+from pprint import pprint
 
+import numpy as np
 import torch
 import torchvision
+import tqdm
 import typer
 import yaml
 from loguru import logger
 from pydantic import BaseModel
+from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import (
     FasterRCNN,
@@ -14,10 +18,10 @@ from torchvision.models.detection.faster_rcnn import (
 )
 from typer import Typer
 
-from cow_detect.train.teo.cow_ds_v1 import CowDataset
+from cow_detect.train.teo.ds_v1 import SkyDataset
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 from cow_detect.utils.metrics import calculate_iou
-from cow_detect.utils.pytorch import auto_detect_device
+from cow_detect.utils.train import train_validation_split
 
 # %%
 
@@ -62,9 +66,115 @@ class TrainCfg(BaseModel):
     """Parameters fort training."""
 
     data_root_dir: Path = Path("data/sky/Dataset1")
+    train_fraction: float
+    valid_fraction: float
     data_loader: DataLoaderParams
     num_epochs: int
     optimizer: OptimizerParams
+
+
+class Trainer:
+    """Provides more ergonomic training and validation loops."""
+
+    def __init__(
+        self,
+        device: torch.device,
+        optimizer: torch.optim.Optimizer,
+        # print_every_batches: int = 10,
+    ) -> None:
+        self.device = device
+        self.optimizer = optimizer
+        # self.print_every_batches = print_every_batches
+
+    def train_epoch(
+        self,
+        epoch: int,
+        model: nn.Module,
+        train_data_loader: DataLoader,
+    ) -> None:
+        """Run loop over train data for one epoch."""
+        train_losses = []
+        train_ious = []
+
+        n_batches = len(train_data_loader.dataset) // train_data_loader.batch_size
+        pbar = tqdm.tqdm(train_data_loader, total=n_batches)
+        for images, targets in pbar:
+            # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
+            model.train()
+            images = [image.to(self.device) for image in images]
+            targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+
+            loss_dict = model(images, targets)
+            total_loss = sum(loss for loss in loss_dict.values())
+
+            # Make predictions in forward mode so that we can calculate IOU metric
+            with torch.no_grad():
+                model.eval()
+                predictions = model(images)
+                model.train()
+
+            mean_iou = calculate_iou(predictions, targets)
+
+            self.optimizer.zero_grad()
+            total_loss.backward()
+            self.optimizer.step()
+
+            train_losses.append(total_loss.item())
+            train_ious.append(mean_iou)
+
+            pbar.set_description(
+                f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}"
+                f", avg.mean.iou={np.mean(train_ious):.4f}"
+            )
+            # if i % self.print_every_batches == 0:
+            #    logger.info(
+            #        f"Epoch {epoch} - Batch: {i} - Total Loss: {total_loss.item():.4f},"
+            #        f" Mean IoU: {mean_iou:.4f}"
+            #    )
+
+        avg_train_loss = np.mean(train_losses)
+        avg_train_iou = np.mean(train_ious)
+        logger.info(f"Epoch {epoch}: {avg_train_loss=:.4}, {avg_train_iou=:.4f}")
+
+    def validate_epoch(
+        self,
+        epoch: int,
+        model: nn.Module,
+        valid_data_loader: DataLoader,
+    ) -> None:
+        """Run loop over validation data after an epoch."""
+        model.eval()
+        valid_scores = []
+        valid_ious = []
+
+        n_batches = len(valid_data_loader.dataset) // valid_data_loader.batch_size
+        with torch.no_grad():
+            pbar = tqdm.tqdm(valid_data_loader, total=n_batches)
+            for images, targets in pbar:
+                # logger.info(f"batch: {i} images: {len(images)} targets: {len(targets)}")
+                images = [image.to(self.device) for image in images]
+                targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+
+                prediction_dicts = model(images, targets)
+                # In eval mode there are no losses but: boxes, labels, confidence scores
+                try:
+                    avg_score = np.nanmean(torch.mean(d["scores"]).item() for d in prediction_dicts)
+                except (KeyError, TypeError, ValueError, RuntimeError):
+                    pprint(prediction_dicts)
+                    raise
+                # predictions = model(images)
+                mean_iou = calculate_iou(prediction_dicts, targets)
+
+                valid_scores.append(avg_score)
+                valid_ious.append(mean_iou)
+                pbar.set_description(
+                    f"Epoch {epoch}: Validation: avg.score={np.mean(valid_scores):.4f}"
+                    f", avg.mean.iou={np.mean(valid_ious):.4f}"
+                )
+
+        avg_valid_score = np.mean(valid_scores)
+        avg_valid_iou = np.mean(valid_ious)
+        logger.info(f"Epoch {epoch}: VALIDATION : {avg_valid_score=:.4}, {avg_valid_iou=:.4f}")
 
 
 @cli.command()
@@ -81,16 +191,34 @@ def train_faster_rcnn(
     cfg_dict = yaml.load(train_cfg_path.open("rt"), Loader=yaml.Loader)
     train_cfg: TrainCfg = TrainCfg.model_validate(cfg_dict)
 
+    train_img_paths, valid_img_paths = train_validation_split(
+        imgs_dir=train_cfg.data_root_dir / "img",
+        train_fraction=train_cfg.train_fraction,
+        valid_fraction=train_cfg.valid_fraction,
+    )
     # Create the dataset and dataloader
-    dataset = CowDataset(
+    train_data_set = SkyDataset(
         root_dir=train_cfg.data_root_dir,
+        image_paths=train_img_paths,
+    )
+    valid_data_set = SkyDataset(
+        root_dir=train_cfg.data_root_dir,
+        image_paths=valid_img_paths,
     )
 
     dl_params = train_cfg.data_loader
-    data_loader = DataLoader(
-        dataset,
+    train_data_loader = DataLoader(
+        train_data_set,
         batch_size=dl_params.batch_size,
         shuffle=dl_params.data_shuffle,
+        num_workers=dl_params.num_workers,
+        collate_fn=faster_rcnn_custom_collate_fn,
+    )
+
+    valid_data_loader = DataLoader(
+        valid_data_set,
+        batch_size=10,
+        shuffle=False,
         num_workers=dl_params.num_workers,
         collate_fn=faster_rcnn_custom_collate_fn,
     )
@@ -113,35 +241,19 @@ def train_faster_rcnn(
         weight_decay=opt_params.weight_decay,
     )
 
+    trainer = Trainer(
+        device=device,
+        optimizer=optimizer,
+        # print_every_batches=print_every_batches,
+    )
+
     # Training loop
     num_epochs = 10
-    model.train()
 
     for epoch in range(num_epochs):
-        for i, (images, targets) in enumerate(data_loader):
-            images = [image.to(device) for image in images]
-            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
-
-            loss_dict = model(images, targets)
-            losses = sum(loss for loss in loss_dict.values())
-
-            # Make predictions in forward mode so that we can calculate IOU metric
-            with torch.no_grad():
-                model.eval()
-                predictions = model(images)
-                model.train()
-
-            mean_iou = calculate_iou(predictions, targets)
-
-            optimizer.zero_grad()
-            losses.backward()
-            optimizer.step()
-
-            if i % print_every_batches == 0:
-                logger.info(
-                    f"Epoch: {epoch}, Batch: {i}, Loss: {losses.item():.4f},"
-                    f" Mean IoU: {mean_iou:.4f}"
-                )
+        # Train loop:
+        trainer.train_epoch(epoch, model, train_data_loader)
+        trainer.validate_epoch(epoch, model, valid_data_loader)
 
     # Save the fine-tuned model
     torch.save(model.state_dict(), save_path)
