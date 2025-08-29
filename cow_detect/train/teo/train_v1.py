@@ -73,7 +73,7 @@ def _interactive_test() -> None:
 class TrainCfg(BaseModel):
     """Parameters fort training."""
 
-    experiment_id: str
+    experiment_name: str
     train_fraction: float
     valid_fraction: float
     data_loader: DataLoaderParams
@@ -272,8 +272,9 @@ def train_faster_rcnn(
     num_epochs = train_cfg.num_epochs
 
     git_revision = get_git_revision_hash()
+    experiment = mlflow.set_experiment(train_cfg.experiment_name)
 
-    with mlflow.start_run(experiment_id=train_cfg.experiment_id):
+    with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
         mlflow.log_param("model_class", type(model).__name__)
