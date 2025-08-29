@@ -36,6 +36,6 @@ stages:
     outs:
     - path: data/training/teo/v1/faster-rcnn-toy/
       hash: md5
-      md5: c6babe9862a227c66cd6307ce7fe8d5a.dir
+      md5: 95f1643c0833b3d80e1a44ac1dd9b97d.dir
       size: 165705362
       nfiles: 3
