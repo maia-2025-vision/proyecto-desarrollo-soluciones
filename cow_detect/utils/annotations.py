@@ -31,7 +31,7 @@ def parse_yolo_annotation_line(
     <class_id> <x_center> <y_center> <bbox_width> <bbox_height>
 
     Returns:
-        class_id (int), BBox
+        class_id (int), BBoxMinMax
     """
     parts = line.strip().split()
     if len(parts) == 5:
