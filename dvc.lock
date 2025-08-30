@@ -3,7 +3,7 @@ stages:
   train-v1:
     cmd: python cow_detect/train/teo/train_v1.py --cfg 
       data/training/teo/v1/train_cfg.yaml  --train-data data/sky/Dataset1 
-      --save-path data/training/teo/v1/faster-rcnn.pth
+      --save-path data/training/teo/v1/faster-rcnn/
     deps:
     - path: data/sky/Dataset1
       hash: md5
@@ -12,13 +12,14 @@ stages:
       nfiles: 1314
     - path: data/training/teo/v1/train_cfg.yaml
       hash: md5
-      md5: e63cc223fff8945ae6834b157a0a69db
-      size: 195
+      md5: 8948953843eac91e564d88f411b5b12c
+      size: 230
     outs:
-    - path: data/training/teo/v1/faster-rcnn.pth
+    - path: data/training/teo/v1/faster-rcnn/
       hash: md5
-      md5: 07a281ee165885c368f2a407edd5af23
-      size: 165724709
+      md5: 321c094af1b41f361e24a3961ede1959.dir
+      size: 165705359
+      nfiles: 3
   train-v1-toy:
     cmd: python cow_detect/train/teo/train_v1.py --cfg 
       data/training/teo/v1/train_cfg_toy.yaml  --train-data data/sky/Dataset1 
