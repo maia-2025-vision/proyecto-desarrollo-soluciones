@@ -35,10 +35,13 @@ dvc pull  # .venv debe estar activado
 
 ## Entrenamiento
 
-Ejemplo:
+Desde la raiz del repo ejecutar 
 
 ```bash
-python cow_detect/train/teo/train_v1.py \
-  --cfg data/training/teo/v1/train_cfg.yaml \
-  --save-path data/training/teo/v1/faster-rcnn.pth
+dvc repro -s train-v1
 ```
+
+# TODO: 
+
+- [ ] Revisar custom_collate_fn
+- [ ] Experiment freezing all parameters except final BoxPRedictor head...

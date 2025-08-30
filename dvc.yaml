@@ -1,0 +1,25 @@
+# schema: "2.0"
+stages:
+  train-v1:
+    cmd: >-
+      python cow_detect/train/teo/train_v1.py
+      --cfg data/training/teo/v1/train_cfg.yaml 
+      --train-data data/sky/Dataset1
+      --save-path data/training/teo/v1/faster-rcnn/
+    deps:
+      - data/training/teo/v1/train_cfg.yaml
+      - data/sky/Dataset1
+    outs:
+      - data/training/teo/v1/faster-rcnn/
+
+  train-v1-toy:
+    cmd: >-
+      python cow_detect/train/teo/train_v1.py
+      --cfg data/training/teo/v1/train_cfg_toy.yaml 
+      --train-data data/sky/Dataset1
+      --save-path data/training/teo/v1/faster-rcnn-toy/
+    deps:
+      - data/training/teo/v1/train_cfg.yaml
+      - data/sky/Dataset1
+    outs:
+      - data/training/teo/v1/faster-rcnn-toy/

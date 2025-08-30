@@ -13,7 +13,7 @@ def identify_broken_images(
     images_dir: Path,
     output_path: Path,  # list of broken images will go here
     ext: str = typer.Option("JPG"),
-):
+) -> None:
     """Identify corrupted image files that can't be read.
 
     List of paths is written to output_path
