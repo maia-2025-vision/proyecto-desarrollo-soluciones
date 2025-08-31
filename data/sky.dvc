@@ -1,0 +1,6 @@
+outs:
+- md5: 34e5fc3c920861f178d9597b2620327d.dir
+  size: 3524484030
+  nfiles: 1347
+  hash: md5
+  path: sky

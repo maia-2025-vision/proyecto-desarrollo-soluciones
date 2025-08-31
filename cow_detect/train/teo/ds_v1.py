@@ -1,33 +1,41 @@
 # Define the dataset class for a custom dataset
+import math
+from collections.abc import Callable
 from pathlib import Path
+from typing import TypeAlias
 
 import torch
-import torchvision.transforms
+import torchvision.transforms  # type: ignore[import-untyped]
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset
 
 from cow_detect.utils.annotations import parse_json_annotations_file
 
+# Type produced by a detection model in train mode
+TargetType: TypeAlias = dict[str, torch.Tensor]
+TransformType: TypeAlias = Callable[[torch.Tensor, TargetType], tuple[torch.Tensor, TargetType]]
 
-class CowDataset(Dataset):
+
+class SkyDataset(Dataset):
     """Dataset class currently adapted to read the sky dataset and json annotations."""
 
     def __init__(
         self,
+        name: str,
         root_dir: Path,
-        img_subdir: str = "img",
+        image_paths: list[Path],
         annot_subdir: str = "ann",
-        ext: str = "JPG",
-        transforms=None,
-    ):
+        transforms: TransformType | None = None,  # TODO: what should the type really be?
+    ) -> None:
+        self.name = name
         self.root_dir = root_dir
         self.transforms = transforms
-        self.image_dir = root_dir / img_subdir
+        # self.image_dir = root_dir / img_subdir
         self.annotation_dir = root_dir / annot_subdir
 
-        all_paths = list(self.image_dir.glob(f"*.{ext}"))
-        logger.info(f"all_images has : {len(all_paths)}")
+        # all_paths = list(self.image_dir.glob(f"*.{ext}"))
+        logger.info(f"dataset: {self.name} - image_paths has : {len(image_paths)}")
 
         broken_imgs_file = root_dir / "broken-imgs.txt"
         if broken_imgs_file.exists():
@@ -38,22 +46,26 @@ class CowDataset(Dataset):
         else:
             broken_imgs = set()
 
-        logger.info(f"all_images has : {len(list(self.image_dir.glob('*.JPG')))}")
-
-        self.image_files = [f.name for f in self.image_dir.glob("*.JPG") if f not in broken_imgs]
-        logger.info(f"after excluding broken images: {len(self.image_files)}")
+        self.image_paths = [fp for fp in image_paths if fp not in broken_imgs]
+        logger.info(
+            f"dataset: {self.name} - after excluding broken images: {len(self.image_paths)}"
+        )
 
         self.class_name_to_id = {"cattle": 1}  # Class 0 is reserved for background
         self.img_to_tensor = torchvision.transforms.ToTensor()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Get the length of the dataset."""
-        return len(self.image_files)
+        return len(self.image_paths)
 
-    def __getitem__(self, idx: int):
+    def num_batches(self, batch_size: int) -> int:
+        """Get the number of batches per epoch."""
+        return int(math.ceil(len(self.image_paths) / batch_size))
+
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, dict[str, torch.Tensor], Path]:
         """Get the i-th item from this dataset."""
-        img_name = self.image_files[idx]
-        img_path = self.image_dir / img_name
+        img_path = self.image_paths[idx]
+        # This simple rule works for SKY but it doesnt work for ICAERUS
         annotation_path = self.annotation_dir / (img_path.name + ".json")
 
         try:
@@ -65,7 +77,6 @@ class CowDataset(Dataset):
         image_pt = self.img_to_tensor(image)
         del image
 
-        assert annotation_path.exists()
         boxes, labels = parse_json_annotations_file(annotation_path, self.class_name_to_id)
 
         target = {}
@@ -84,4 +95,4 @@ class CowDataset(Dataset):
         if self.transforms:
             image_pt, target = self.transforms(image_pt, target)
 
-        return image_pt, target
+        return image_pt, target, img_path

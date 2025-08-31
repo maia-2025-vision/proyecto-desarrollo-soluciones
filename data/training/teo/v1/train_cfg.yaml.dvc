@@ -1,0 +1,5 @@
+outs:
+- md5: 4e8109fa432fa18ba660fa429f14dacb
+  size: 196
+  hash: md5
+  path: train_cfg.yaml

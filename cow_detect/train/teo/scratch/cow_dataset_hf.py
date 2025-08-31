@@ -1,11 +1,15 @@
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 
+from cow_detect.train.teo.ds_v1 import TargetType
 from cow_detect.utils.annotations import parse_json_annotations_file
+
+TransformType: type = Callable[[Image.Image, TargetType], tuple[torch.Tensor, TargetType]]
 
 
 # Define the dataset class
@@ -20,7 +24,7 @@ class CowDatasetHF(Dataset):
         image_dir: Path,
         annot_dir: Path,
         image_processor,
-        transform=None,
+        transform: TransformType | None = None,  # Pending: right type?
         class_name_to_id: dict[str, int] | None = None,
     ) -> None:
         self.image_processor = image_processor
@@ -34,11 +38,11 @@ class CowDatasetHF(Dataset):
 
         self.class_name_to_id = class_name_to_id or {"cattle": 0}
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Length of the dataset."""
         return len(self.image_files)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict[str, object]:
         """Get the idx-th item."""
         img_name = self.image_files[idx]
         img_path = self.image_dir / img_name
@@ -67,7 +71,7 @@ class CowDatasetHF(Dataset):
         )
         target["iscrowd"] = torch.zeros((len(boxes),), dtype=torch.int64)
 
-        if self.transform:
+        if self.transform is not None:
             image, target = self.transform(image, target)
 
         # Format the target for the Hugging Face model

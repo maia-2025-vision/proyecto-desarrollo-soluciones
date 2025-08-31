@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from transformers import DetrForObjectDetection, DetrImageProcessor
 
-from cow_detect.train.teo.scratch.cow_dataset_hf import CowDataset
+from cow_detect.train.teo.scratch.cow_dataset_hf import CowDatasetHF
 from cow_detect.utils.pytorch import auto_detect_device
 
 
@@ -14,7 +14,7 @@ def train_detr(
     learning_rate: float = 1e-5,
     num_epochs: int = 10,
     batch_size: int = 2,
-):
+) -> None:
     """Trains a Detr model.
 
     Note: which is not really appropriate for detecting objects that
@@ -33,7 +33,9 @@ def train_detr(
     num_epochs = 10
 
     # Create the dataset and dataloader
-    dataset = CowDataset(image_dir=image_dir, annot_dir=annot_dir, image_processor=image_processor)
+    dataset = CowDatasetHF(
+        image_dir=image_dir, annot_dir=annot_dir, image_processor=image_processor
+    )
     data_loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True, collate_fn=detr_custom_collate_fn
     )
@@ -61,7 +63,7 @@ def train_detr(
 
 
 # Custom collate function to handle the variable number of boxes
-def detr_custom_collate_fn(batch):
+def detr_custom_collate_fn(batch) -> dict[str, object]:
     """Custom collate function for HF Detr model."""
     pixel_values = torch.stack([item["pixel_values"] for item in batch])
     labels = [item["labels"] for item in batch]
