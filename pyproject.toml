@@ -12,7 +12,11 @@ requires-python = ">=3.13,<3.14"
 dependencies = [
     "typer",
     "pydantic",
-    "loguru"
+    "loguru",
+    "streamlit>=1.49.1",
+    "boto3>=1.39.11",
+    "requests>=2.32.5",
+    "pillow>=11.3.0",
 ]
 
 [dependency-groups]
