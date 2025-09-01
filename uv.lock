@@ -452,7 +452,9 @@ dependencies = [
 dev = [
     { name = "dvc" },
     { name = "dvc-s3" },
+    { name = "fastapi" },
     { name = "marimo" },
+    { name = "mlflow" },
     { name = "mypy" },
     { name = "poethepoet" },
     { name = "pre-commit" },
@@ -480,7 +482,9 @@ requires-dist = [
 dev = [
     { name = "dvc" },
     { name = "dvc-s3" },
+    { name = "fastapi", specifier = ">=0.116.1" },
     { name = "marimo" },
+    { name = "mlflow", specifier = ">=3.3.2" },
     { name = "mypy" },
     { name = "poethepoet" },
     { name = "pre-commit" },

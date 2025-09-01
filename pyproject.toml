@@ -36,7 +36,9 @@ dev = [
     "ruff",
     "poethepoet",
     "types-PyYAML",
-    "types-tqdm"
+    "types-tqdm",
+    "fastapi>=0.116.1",
+    "mlflow>=3.3.2",
 ]
 
 [build-system]
