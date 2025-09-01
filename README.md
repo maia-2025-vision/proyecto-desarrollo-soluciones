@@ -14,7 +14,7 @@ https://docs.astral.sh/uv/getting-started/installation/
 uv python install
 
 # instala las dependencias del grupo [dev] definidas en pyproject.toml
-uv sync --native-tls --devq
+uv sync --native-tls --dev
 source .venv/bin/activate
 ```
 
@@ -40,6 +40,19 @@ Desde la raiz del repo ejecutar
 ```bash
 dvc repro -s train-v1
 ```
+
+## Ejecución del API
+Previamente haber instalado las dependencias del grupo [dev] definidas en pyproject.toml
+
+Se debe ejecutar el script run_api.py ubicado en el folder api/.
+
+```bash
+python api/run_api.py
+```
+
+La configuración del endpoint se encuentra en api/config.py
+
+La consulta de los endpoints se encuentra en http://localhost:8000/docs, de acuerdo a las configuraciones iniciales del endpoint.
 
 ## Streamlit Application
 
