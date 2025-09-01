@@ -54,42 +54,42 @@ La configuración del endpoint se encuentra en api/config.py
 
 La consulta de los endpoints se encuentra en http://localhost:8000/docs, de acuerdo a las configuraciones iniciales del endpoint.
 
-## Streamlit Application
+## Aplicación Streamlit
 
-This project includes a Streamlit web application for uploading images to S3 and viewing detection results.
+Este proyecto incluye una aplicación web Streamlit para cargar imágenes a S3 y visualizar resultados de detección.
 
-### Running the Streamlit App
+### Ejecutar la Aplicación Streamlit
 
 ```bash
-# Make sure dependencies are installed
+# Asegurarse de que las dependencias estén instaladas
 uv sync --native-tls
 
-# Run the streamlit app
+# Ejecutar la aplicación streamlit
 uv run streamlit run streamlit_app.py
 ```
 
-The app will be available at `http://localhost:8501`
+La aplicación estará disponible en `http://localhost:8501`
 
-### Features
+### Características
 
-The application has two pages:
+La aplicación tiene dos páginas:
 
-1. **Upload Images**: Upload images to the S3 bucket `cow-detect-maia` for processing
-   - Configure S3 prefix/folder path
-   - Batch upload multiple images
-   - Automatically calls processing endpoint after successful uploads
+1. **Cargar Imágenes**: Cargar imágenes al bucket S3 `cow-detect-maia` para procesamiento
+   - Configurar finca y sobrevuelo para organización
+   - Carga por lotes de múltiples imágenes
+   - Llama automáticamente al endpoint de procesamiento después de cargas exitosas
 
-2. **View Detections**: Display images with bounding boxes from detection API
-   - Fetch detection data from API endpoints
-   - Visualize bounding boxes with customizable colors
-   - Support for multiple JSON formats
-   - Display confidence scores and labels
+2. **Ver Detecciones**: Mostrar imágenes con cuadros delimitadores desde API de detección
+   - Obtener datos de detección desde endpoints API
+   - Visualizar cuadros delimitadores con colores personalizables
+   - Soporte para múltiples formatos JSON
+   - Mostrar puntuaciones de confianza y etiquetas
 
-### Configuration
+### Configuración
 
-Before using the upload feature:
-- Configure AWS credentials (`aws configure` or environment variables)
-- Update the `ENDPOINT_URL` in `pages/1_Upload_Images.py` with your processing endpoint
+Antes de usar la función de carga:
+- Configurar credenciales AWS (`aws configure` o variables de entorno)
+- Actualizar el `ENDPOINT_URL` en `pages/1_Upload_Images.py` con su endpoint de procesamiento
 
 # TODO: 
 
