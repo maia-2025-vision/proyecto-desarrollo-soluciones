@@ -6,10 +6,10 @@ import json
 from typing import Dict, List, Any, Optional
 import numpy as np
 
-st.set_page_config(page_title="View Detections", layout="wide")
+st.set_page_config(page_title="Ver Detecciones", layout="wide")
 
-st.title("View Detection Results")
-st.markdown("Display images with bounding boxes from detection API endpoint.")
+st.title("Ver Resultados de Detección")
+st.markdown("Mostrar imágenes con cuadros delimitadores desde el endpoint API de detección.")
 
 def fetch_detection_data(endpoint_url: str) -> Optional[Dict[str, Any]]:
     try:
@@ -17,10 +17,10 @@ def fetch_detection_data(endpoint_url: str) -> Optional[Dict[str, Any]]:
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching data: {str(e)}")
+        st.error(f"Error al obtener datos: {str(e)}")
         return None
     except json.JSONDecodeError as e:
-        st.error(f"Error parsing JSON response: {str(e)}")
+        st.error(f"Error al analizar respuesta JSON: {str(e)}")
         return None
 
 def load_image_from_url(image_url: str) -> Optional[Image.Image]:
@@ -29,14 +29,14 @@ def load_image_from_url(image_url: str) -> Optional[Image.Image]:
         response.raise_for_status()
         return Image.open(io.BytesIO(response.content))
     except Exception as e:
-        st.error(f"Error loading image from {image_url}: {str(e)}")
+        st.error(f"Error al cargar imagen desde {image_url}: {str(e)}")
         return None
 
 def load_image_from_path(image_path: str) -> Optional[Image.Image]:
     try:
         return Image.open(image_path)
     except Exception as e:
-        st.error(f"Error loading image from {image_path}: {str(e)}")
+        st.error(f"Error al cargar imagen desde {image_path}: {str(e)}")
         return None
 
 def draw_bounding_boxes(
@@ -93,34 +93,34 @@ def draw_bounding_boxes(
     return img_with_boxes
 
 def main():
-    st.sidebar.header("Configuration")
+    st.sidebar.header("Configuración")
     
     input_method = st.sidebar.radio(
-        "Input Method",
-        ["API Endpoint", "Sample JSON"]
+        "Método de Entrada",
+        ["Endpoint API", "JSON de Muestra"]
     )
     
-    if input_method == "API Endpoint":
+    if input_method == "Endpoint API":
         endpoint_url = st.sidebar.text_input(
-            "API Endpoint URL",
+            "URL del Endpoint API",
             placeholder="https://api.example.com/detections",
-            help="Enter the URL of your detection API endpoint"
+            help="Ingrese la URL de su endpoint API de detección"
         )
         
-        if st.sidebar.button("Fetch Detections"):
+        if st.sidebar.button("Obtener Detecciones"):
             if endpoint_url:
-                with st.spinner("Fetching detection data..."):
+                with st.spinner("Obteniendo datos de detección..."):
                     data = fetch_detection_data(endpoint_url)
                     if data:
                         st.session_state['detection_data'] = data
-                        st.success("Data fetched successfully!")
+                        st.success("¡Datos obtenidos exitosamente!")
             else:
-                st.warning("Please enter an API endpoint URL")
+                st.warning("Por favor ingrese una URL de endpoint API")
     
     else:
-        st.sidebar.markdown("### Sample JSON Format")
+        st.sidebar.markdown("### Formato JSON de Muestra")
         sample_json = st.sidebar.text_area(
-            "Paste JSON data",
+            "Pegar datos JSON",
             value=json.dumps({
                 "images": [
                     {
@@ -129,7 +129,7 @@ def main():
                             {
                                 "xmin": 100, "ymin": 100, 
                                 "xmax": 200, "ymax": 200,
-                                "label": "cow",
+                                "label": "vaca",
                                 "confidence": 0.95
                             }
                         ]
@@ -139,21 +139,21 @@ def main():
             height=300
         )
         
-        if st.sidebar.button("Load JSON"):
+        if st.sidebar.button("Cargar JSON"):
             try:
                 data = json.loads(sample_json)
                 st.session_state['detection_data'] = data
-                st.success("JSON loaded successfully!")
+                st.success("¡JSON cargado exitosamente!")
             except json.JSONDecodeError as e:
-                st.error(f"Invalid JSON: {str(e)}")
+                st.error(f"JSON inválido: {str(e)}")
     
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Display Options")
+    st.sidebar.subheader("Opciones de Visualización")
     
-    box_color = st.sidebar.color_picker("Box Color", "#FF0000")
-    text_color = st.sidebar.color_picker("Text Color", "#FFFFFF")
-    line_width = st.sidebar.slider("Line Width", 1, 10, 3)
-    show_confidence = st.sidebar.checkbox("Show Confidence Scores", True)
+    box_color = st.sidebar.color_picker("Color de Cuadro", "#FF0000")
+    text_color = st.sidebar.color_picker("Color de Texto", "#FFFFFF")
+    line_width = st.sidebar.slider("Ancho de Línea", 1, 10, 3)
+    show_confidence = st.sidebar.checkbox("Mostrar Puntuaciones de Confianza", True)
     
     if 'detection_data' in st.session_state:
         data = st.session_state['detection_data']
@@ -169,12 +169,12 @@ def main():
             images_data = [data]
         
         if not images_data:
-            st.warning("No images found in the data")
+            st.warning("No se encontraron imágenes en los datos")
             return
         
-        st.subheader(f"Detection Results ({len(images_data)} images)")
+        st.subheader(f"Resultados de Detección ({len(images_data)} imágenes)")
         
-        cols_per_row = st.slider("Images per row", 1, 4, 2)
+        cols_per_row = st.slider("Imágenes por fila", 1, 4, 2)
         
         for i in range(0, len(images_data), cols_per_row):
             cols = st.columns(cols_per_row)
@@ -216,7 +216,7 @@ def main():
                                 elif 'category' in det:
                                     labels.append(det['category'])
                                 else:
-                                    labels.append("object")
+                                    labels.append("objeto")
                                 
                                 if show_confidence:
                                     if 'confidence' in det:
@@ -237,25 +237,25 @@ def main():
                                     line_width=line_width
                                 )
                                 st.image(image_with_boxes, use_container_width=True)
-                                st.caption(f"Detections: {len(detections)}")
+                                st.caption(f"Detecciones: {len(detections)}")
                             else:
                                 st.image(image, use_container_width=True)
-                                st.caption("No detections")
+                                st.caption("Sin detecciones")
                             
-                            with st.expander("Detection Details"):
+                            with st.expander("Detalles de Detección"):
                                 for idx, det in enumerate(detections):
                                     st.json(det)
                         else:
-                            st.error(f"Could not load image {i + j + 1}")
+                            st.error(f"No se pudo cargar la imagen {i + j + 1}")
     else:
-        st.info("👈 Use the sidebar to load detection data from an API endpoint or paste sample JSON")
+        st.info("👈 Use la barra lateral para cargar datos de detección desde un endpoint API o pegue JSON de muestra")
         
         st.markdown("""
-        ### Expected JSON Format
+        ### Formato JSON Esperado
         
-        The API should return JSON in one of these formats:
+        El API debe devolver JSON en uno de estos formatos:
         
-        **Format 1: Images with detections**
+        **Formato 1: Imágenes con detecciones**
         ```json
         {
             "images": [
@@ -265,7 +265,7 @@ def main():
                         {
                             "xmin": 100, "ymin": 100,
                             "xmax": 200, "ymax": 200,
-                            "label": "cow",
+                            "label": "vaca",
                             "confidence": 0.95
                         }
                     ]
@@ -274,17 +274,17 @@ def main():
         }
         ```
         
-        **Format 2: Alternative box format**
+        **Formato 2: Formato alternativo de cuadros**
         ```json
         {
             "results": [
                 {
-                    "image_path": "/path/to/image.jpg",
+                    "image_path": "/ruta/a/imagen.jpg",
                     "boxes": [
                         {
                             "x": 100, "y": 100,
                             "width": 100, "height": 100,
-                            "class": "cow",
+                            "class": "vaca",
                             "score": 0.95
                         }
                     ]

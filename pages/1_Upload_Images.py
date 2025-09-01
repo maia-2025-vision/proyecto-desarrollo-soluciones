@@ -5,10 +5,10 @@ import requests
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="Upload Images", layout="wide")
+st.set_page_config(page_title="Cargar Imágenes", layout="wide")
 
-st.title("Upload Images to S3")
-st.markdown("Upload images to the cow-detect-maia S3 bucket for processing.")
+st.title("Cargar Imágenes a S3")
+st.markdown("Carga imágenes al bucket S3 cow-detect-maia para procesamiento.")
 
 S3_BUCKET = "cow-detect-maia"
 ENDPOINT_URL = "https://example.com"  # Configure your endpoint URL here
@@ -18,7 +18,7 @@ def get_s3_client():
     try:
         return boto3.client('s3')
     except NoCredentialsError:
-        st.error("AWS credentials not found. Please configure your AWS credentials.")
+        st.error("Credenciales AWS no encontradas. Por favor configure sus credenciales AWS.")
         return None
 
 def upload_to_s3(file, s3_client, key):
@@ -28,13 +28,13 @@ def upload_to_s3(file, s3_client, key):
     except ClientError as e:
         error_code = e.response['Error']['Code']
         if error_code == 'NoSuchBucket':
-            return False, f"Bucket {S3_BUCKET} does not exist."
+            return False, f"El bucket {S3_BUCKET} no existe."
         elif error_code == 'AccessDenied':
-            return False, "Access denied. Check your AWS permissions."
+            return False, "Acceso denegado. Verifique sus permisos de AWS."
         else:
-            return False, f"Error uploading file: {str(e)}"
+            return False, f"Error al cargar archivo: {str(e)}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Error inesperado: {str(e)}"
 
 def call_endpoint(image_name, s3_path):
     if not ENDPOINT_URL:
@@ -49,60 +49,60 @@ def call_endpoint(image_name, s3_path):
         response.raise_for_status()
         return True, response.json()
     except requests.exceptions.RequestException as e:
-        return False, f"Endpoint error: {str(e)}"
+        return False, f"Error del endpoint: {str(e)}"
 
 def main():
     s3_client = get_s3_client()
 
     if not s3_client:
-        st.warning("Please configure AWS credentials to enable uploads.")
+        st.warning("Por favor configure las credenciales AWS para habilitar las cargas.")
         st.markdown("""
-        ### AWS Configuration
-        You can configure AWS credentials by:
-        1. Setting environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-        2. Using AWS CLI: `aws configure`
-        3. Using IAM roles if running on AWS infrastructure
+        ### Configuración AWS
+        Puede configurar las credenciales AWS mediante:
+        1. Variables de entorno: `AWS_ACCESS_KEY_ID` y `AWS_SECRET_ACCESS_KEY`
+        2. Usando AWS CLI: `aws configure`
+        3. Usando roles IAM si está ejecutando en infraestructura AWS
         """)
         return
 
-    st.subheader("Upload Settings")
+    st.subheader("Configuración de Carga")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        farm = st.text_input(
-            "Farm",
+        finca = st.text_input(
+            "Finca",
             value="",
-            placeholder="e.g. farm-001",
-            help="Name of the farm for organizing uploads"
+            placeholder="ej. finca-001",
+            help="Nombre de la finca para organizar las cargas"
         )
 
     with col2:
-        flyover = st.text_input(
-            "Flyover",
+        sobrevuelo = st.text_input(
+            "Sobrevuelo",
             value="",
-            placeholder="e.g. survey-2024-01",
-            help="Name of the flyover/mission"
+            placeholder="ej. vuelo-2024-01",
+            help="Nombre del sobrevuelo/misión"
         )
 
-    # Validate inputs
-    if not farm or not flyover:
-        st.warning("Please enter both Farm and Flyover to proceed")
+    # Validar entradas
+    if not finca or not sobrevuelo:
+        st.warning("Por favor ingrese tanto Finca como Sobrevuelo para continuar")
 
-    # Build the S3 prefix path
-    prefix = f"{farm}/{flyover}/" if farm and flyover else ""
+    # Construir la ruta del prefijo S3
+    prefix = f"{finca}/{sobrevuelo}/" if finca and sobrevuelo else ""
 
 
     uploaded_files = st.file_uploader(
-            "Choose images to upload",
+            "Seleccione imágenes para cargar",
             type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
             accept_multiple_files=True
         )
 
     if uploaded_files:
-        st.info(f"Selected {len(uploaded_files)} file(s)")
+        st.info(f"{len(uploaded_files)} archivo(s) seleccionado(s)")
 
-        if st.button("Upload to S3", type="primary", disabled=(not farm or not flyover)):
+        if st.button("Cargar a S3", type="primary", disabled=(not finca or not sobrevuelo)):
             progress_bar = st.progress(0)
             status_container = st.container()
 
@@ -111,7 +111,7 @@ def main():
             endpoint_results = []
 
             for idx, uploaded_file in enumerate(uploaded_files):
-                # Use original filename without timestamp for cleaner organization
+                # Usar nombre de archivo original sin marca de tiempo para organización más limpia
                 s3_key = f"{prefix}{uploaded_file.name}"
 
                 uploaded_file.seek(0)
@@ -120,7 +120,7 @@ def main():
                 if success:
                     successful_uploads.append((uploaded_file.name, s3_key, message))
 
-                    # Call endpoint
+                    # Llamar endpoint
                     endpoint_result = call_endpoint(uploaded_file.name, s3_key)
                     if endpoint_result:
                         endpoint_success, endpoint_response = endpoint_result
@@ -132,22 +132,22 @@ def main():
 
             with status_container:
                 if successful_uploads:
-                    st.success(f"Successfully uploaded {len(successful_uploads)} file(s)")
-                    with st.expander("View uploaded files"):
+                    st.success(f"Se cargaron exitosamente {len(successful_uploads)} archivo(s)")
+                    with st.expander("Ver archivos cargados"):
                         for name, key, url in successful_uploads:
                             st.text(f"{name} → s3://{S3_BUCKET}/{key}")
 
                 if failed_uploads:
-                    st.error(f"Failed to upload {len(failed_uploads)} file(s)")
-                    with st.expander("View failed uploads"):
+                    st.error(f"Fallo al cargar {len(failed_uploads)} archivo(s)")
+                    with st.expander("Ver cargas fallidas"):
                         for name, error in failed_uploads:
                             st.text(f"{name}: {error}")
 
                 if endpoint_results:
-                    with st.expander("View processing results"):
+                    with st.expander("Ver resultados del procesamiento"):
                         for name, success, response in endpoint_results:
                             if success:
-                                st.success(f"{name}: Processed successfully")
+                                st.success(f"{name}: Procesado exitosamente")
                                 st.json(response)
                             else:
                                 st.error(f"{name}: {response}")
