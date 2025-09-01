@@ -54,6 +54,43 @@ La configuración del endpoint se encuentra en api/config.py
 
 La consulta de los endpoints se encuentra en http://localhost:8000/docs, de acuerdo a las configuraciones iniciales del endpoint.
 
+## Streamlit Application
+
+This project includes a Streamlit web application for uploading images to S3 and viewing detection results.
+
+### Running the Streamlit App
+
+```bash
+# Make sure dependencies are installed
+uv sync --native-tls
+
+# Run the streamlit app
+uv run streamlit run streamlit_app.py
+```
+
+The app will be available at `http://localhost:8501`
+
+### Features
+
+The application has two pages:
+
+1. **Upload Images**: Upload images to the S3 bucket `cow-detect-maia` for processing
+   - Configure S3 prefix/folder path
+   - Batch upload multiple images
+   - Automatically calls processing endpoint after successful uploads
+
+2. **View Detections**: Display images with bounding boxes from detection API
+   - Fetch detection data from API endpoints
+   - Visualize bounding boxes with customizable colors
+   - Support for multiple JSON formats
+   - Display confidence scores and labels
+
+### Configuration
+
+Before using the upload feature:
+- Configure AWS credentials (`aws configure` or environment variables)
+- Update the `ENDPOINT_URL` in `pages/1_Upload_Images.py` with your processing endpoint
+
 # TODO: 
 
 - [ ] Revisar custom_collate_fn
