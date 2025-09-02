@@ -1,9 +1,6 @@
 import streamlit as st
 
-st.set_page_config(
-    page_title="Aplicación de Detección de Vacas",
-    layout="wide"
-)
+st.set_page_config(page_title="Aplicación de Detección de Vacas", layout="wide")
 
 st.title("Aplicación de Detección de Vacas")
 st.markdown("""

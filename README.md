@@ -38,6 +38,11 @@ dvc pull  # .venv debe estar activado
 Desde la raiz del repo ejecutar 
 
 ```bash
+# Install torch-train dependencies 
+uv sync --group dev --group torch-train
+```
+
+```bash
 dvc repro -s train-v1
 ```
 
@@ -50,9 +55,9 @@ Se debe ejecutar el script run_api.py ubicado en el folder api/.
 python api/run_api.py
 ```
 
-La configuración del endpoint se encuentra en api/config.py
+La configuración del endpoint se encuentra en [api/config.py](api/config.py)
 
-La consulta de los endpoints se encuentra en http://localhost:8000/docs, de acuerdo a las configuraciones iniciales del endpoint.
+La consulta de los endpoints se encuentra en [localhost:8000](http://localhost:8000/docs), de acuerdo a las configuraciones iniciales del endpoint.
 
 ## Aplicación Streamlit
 
@@ -91,7 +96,7 @@ Antes de usar la función de carga:
 - Configurar credenciales AWS (`aws configure` o variables de entorno)
 - Actualizar el `ENDPOINT_URL` en `pages/1_Upload_Images.py` con su endpoint de procesamiento
 
+
 # TODO: 
 
-- [ ] Revisar custom_collate_fn
 - [ ] Experiment freezing all parameters except final BoxPRedictor head...

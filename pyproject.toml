@@ -74,6 +74,7 @@ select = [
 ]
 ignore = [
     "D100", # Missing docstring in public module
+    "D103", # Missing docstring in public function
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
     "UP040", # Type alias `X` uses `TypeAlias` annotation instead of the `type` keyword
@@ -123,3 +124,11 @@ cmd="python cow_detect/utils/annotations.py data/sky/Dataset1/ann/"
 [tool.poe.tasks.scan-annots-sky-2]
 help="Test annots parsing over all annotations of Sky Dataset 2"
 cmd="python cow_detect/utils/annotations.py data/sky/Dataset2/ann/"
+
+[tool.poe.tasks.serve]
+help="Start the prediction API service"
+cmd="python api/run_api.py"
+
+[tool.poe.tasks.dashboard]
+help="Start the streamlit dashboard"
+cmd="uv run streamlit run streamlit_app.py"

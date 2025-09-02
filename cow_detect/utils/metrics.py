@@ -14,7 +14,7 @@ def calculate_iou(predictions: list[dict], targets: list[dict]) -> float:
         if pred_boxes.shape[0] > 0 and target_boxes.shape[0] > 0:
             iou_matrix = box_iou(pred_boxes, target_boxes)
             max_iou_per_pred = torch.max(iou_matrix, dim=1)[0]
-            total_iou += float(torch.sum(max_iou_per_pred).item())
+            total_iou += float(torch.sum(max_iou_per_pred).detach().item())
             num_iou += pred_boxes.shape[0]
 
     return total_iou / num_iou if num_iou > 0 else 0
