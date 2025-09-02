@@ -7,14 +7,16 @@ from typing import Dict, List, Any, Optional
 import numpy as np
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
+import zipfile 
 
 # --- AWS S3 Client (Minimal) ---
 @st.cache_resource
 def get_s3_client():
-    """Initializes a boto3 S3 client, caching the resource."""
+    """Inicializa un cliente de S3 de boto3."""
     try:
-        # Assumes credentials are configured in the environment (e.g., ~/.aws/credentials)
-        return boto3.client('s3')
+        #Se especifica el perfil para asegurar que se usen las credenciales correctas.
+        session = boto3.Session(profile_name="dvc-user")
+        return session.client("s3")
     except NoCredentialsError:
         st.error("Credenciales de AWS no encontradas. No se podrán cargar imágenes desde S3.")
         return None
@@ -50,29 +52,84 @@ def load_image(img_data: dict):
     return None
 
 # --- Drawing Logic ---
-def draw_bounding_boxes(image: Image.Image, detections: list) -> Image.Image:
-    """Draws bounding boxes and labels on a copy of the image."""
-    img_with_boxes = image.copy().convert("RGB")
+def draw_bounding_boxes(image: Image.Image, detections: list, confidence_threshold: float) -> Image.Image:
+    """Dibuja cuadros delimitadores y un fondo translúcido para el texto del puntaje."""
+    img_with_boxes = image.copy().convert("RGBA")
     draw = ImageDraw.Draw(img_with_boxes)
+
+    font_size = 60
     try:
-        # A commonly available font
-        font = ImageFont.truetype("arial.ttf", 20)
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
     except IOError:
-        font = ImageFont.load_default()
-    
+        # Fallbacks de fuentes
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+        except IOError:
+            try:
+                font = ImageFont.load_default(size=font_size)
+            except AttributeError:
+                font = ImageFont.load_default()
+
     for det in detections:
-        box = det.get("bbox")
-        if isinstance(box, list) and len(box) == 4:
-            draw.rectangle(box, outline="red", width=3)
-            score = det.get("score", 0.0)
-            label = f"{det.get('label', 'vaca')}: {score:.2f}"
-            draw.text((box[0], box[1] - 25), label, fill="red", font=font)
-    
-    return img_with_boxes
+        score = det.get("score", 0.0)
+        if score >= confidence_threshold:
+            box = det.get("bbox")
+            
+            if score >= 0.8:
+                color = "green"
+            elif score >= 0.5:
+                color = "yellow"
+            else:
+                color = "red"
+
+            if isinstance(box, list) and len(box) == 4:
+                draw.rectangle(box, outline=color, width=5)
+                
+                score_text = f"{score:.2f}"
+                text_position = (box[0], box[1] - (font_size + 5))
+                
+                # --- Lógica para fondo translúcido nítido ---
+                try:
+                    text_bbox = draw.textbbox(text_position, score_text, font=font)
+                    padding = 10
+                    bg_bbox = (
+                        int(text_bbox[0] - padding), int(text_bbox[1] - padding),
+                        int(text_bbox[2] + padding), int(text_bbox[3] + padding)
+                    )
+                    
+                    # Crear un panel blanco translúcido
+                    overlay = Image.new('RGBA', img_with_boxes.size, (255, 255, 255, 0))
+                    draw_overlay = ImageDraw.Draw(overlay)
+                    draw_overlay.rectangle(bg_bbox, fill=(255, 255, 255, 60)) # Blanco con ~76% de transparencia
+
+                    # Combinar la capa de superposición con la imagen principal
+                    img_with_boxes = Image.alpha_composite(img_with_boxes, overlay)
+                    draw = ImageDraw.Draw(img_with_boxes) # Volver a crear el objeto Draw
+
+                except Exception:
+                    # Fallback si falla el efecto
+                    pass
+                
+                # Dibujar el texto encima del área procesada
+                draw.text(text_position, score_text, font=font, fill=color)
+
+    return img_with_boxes.convert("RGB")
+
+
+def image_to_bytes(image: Image.Image) -> bytes:
+    """Converts a PIL Image to bytes."""
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
 
 # --- Main Page UI ---
 def main():
     st.set_page_config(page_title="Ver Detecciones", layout="wide")
+    st.sidebar.title("Opciones de Visualización") # ADDED: Sidebar title
+    confidence_threshold = st.sidebar.slider(
+        "Umbral de Confianza", 0.0, 1.0, 0.5, 0.05
+    )
+    
     st.title("Visualizador de Detecciones")
 
     # The single source of truth is the session state populated by the upload page
@@ -83,26 +140,66 @@ def main():
         sobrevuelo = st.session_state.get('sobrevuelo', 'N/A')
         st.header(f"Resultados para Finca: {finca} | Sobrevuelo: {sobrevuelo}")
         st.info(f"Se encontraron {len(images_to_display)} imágenes para mostrar.")
-        
-        for img_data in images_to_display:
-            st.markdown("---")
-            st.subheader(f"Imagen: {img_data.get('name', 'Nombre no disponible')}")
-            
-            image = load_image(img_data)
-            
-            if image:
-                detections = img_data.get("detections", [])
-                if detections:
-                    st.image(draw_bounding_boxes(image, detections), use_container_width=True)
-                    with st.expander("Ver datos de detección (JSON)"):
-                        st.json(detections)
+
+        # --- Refactored Logic for Single Loop Processing ---
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+            # This single loop will process images for display and for the zip file simultaneously.
+            for img_data in images_to_display:
+                st.markdown("---")
+                st.subheader(f"Imagen: {img_data.get('name', 'Nombre no disponible')}")
+                
+                image = load_image(img_data)
+                
+                if image:
+                    detections_dict = img_data.get("detections", {})
+                    if detections_dict and "boxes" in detections_dict:
+                        # Reformatear los datos de detección
+                        boxes = detections_dict.get("boxes", [])
+                        scores = detections_dict.get("scores", [0.0] * len(boxes))
+                        labels = detections_dict.get("labels", ["vaca"] * len(boxes))
+                        
+                        reformatted_detections = [
+                            {"bbox": box, "score": scores[i], "label": labels[i]}
+                            for i, box in enumerate(boxes)
+                        ]
+
+                        annotated_image = draw_bounding_boxes(image, reformatted_detections, confidence_threshold)
+                        
+                        # 1. Display the annotated image
+                        st.image(annotated_image, width='stretch')
+
+                        # 2. Add the annotated image to the zip file in memory
+                        zip_file.writestr(
+                            f"{img_data.get('name', 'image.png')}", 
+                            image_to_bytes(annotated_image)
+                        )
+
+                        with st.expander("Ver datos de detección (JSON)"):
+                            st.json(detections_dict)
+                        
+                        st.download_button(
+                           label="Descargar imagen anotada",
+                           data=image_to_bytes(annotated_image),
+                           file_name=f"annotated_{img_data.get('name', 'image.png')}",
+                           mime="image/png"
+                        )
+                    else:
+                        st.image(image, width='stretch')
+                        st.caption("No se encontraron detecciones para esta imagen.")
                 else:
-                    st.image(image, use_container_width=True)
-                    st.caption("No se encontraron detecciones para esta imagen.")
-            else:
-                st.error("No se pudo cargar o mostrar la imagen.")
-                with st.expander("Ver datos del intento de carga"):
-                    st.json(img_data)
+                    st.error("No se pudo cargar o mostrar la imagen.")
+                    with st.expander("Ver datos del intento de carga"):
+                        st.json(img_data)
+        
+        # This is now rendered after the loop has populated the zip buffer.
+        st.sidebar.download_button(
+            label="Descargar Todo (ZIP)",
+            data=zip_buffer.getvalue(),
+            file_name=f"resultados_{finca}_{sobrevuelo}.zip",
+            mime="application/zip",
+        )
+
     else:
         st.info("Aún no hay datos para mostrar. Por favor, vaya a la página de carga para procesar imágenes.")
         st.page_link("pages/1_Upload_Images.py", label="Ir a Cargar Imágenes", icon="⬆️")

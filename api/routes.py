@@ -54,7 +54,7 @@ async def predict_many_endpoint(req: PredictManyRequest):
     """
     results = []
 
-    for url in req.image_urls:
+    for url in req.urls:
         result = predict_one(url)
         results.append(result)
 

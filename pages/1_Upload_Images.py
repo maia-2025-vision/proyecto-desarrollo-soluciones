@@ -202,6 +202,21 @@ def main():
                                 st.json(response)
                             else:
                                 st.error(f"{name}: {response}")
+            
+            # ---Store results in session_state for the other page ---
+            images_for_session = []
+            if endpoint_results:
+                for name, success, response in endpoint_results:
+                    if success:
+                        # Find the corresponding s3_uri from the successful_uploads list
+                        s3_key = next((k for n, k, u in successful_uploads if n == name), None)
+                        if s3_key:
+                            images_for_session.append({
+                                "name": name,
+                                "s3_uri": f"s3://{S3_BUCKET}/{s3_key}",
+                                "detections": response.get("detections", {})
+                            })
+            st.session_state['detection_data'] = {"images": images_for_session}
 
 
 if __name__ == "__main__":
