@@ -10,7 +10,7 @@ from loguru import logger
 from PIL import Image
 
 from api.types import (
-    PredictionException,
+    PredictionError,
     PredictionResult,
     PredictManyRequest,
     PredictManyResult,
@@ -70,7 +70,7 @@ def predict_one(url: str):
     try:
         image = download_image_from_url(url)
     except Exception as e:
-        return PredictionException(
+        return PredictionError(
             url=url,
             status=HTTPStatus.UNAUTHORIZED,
             error=f"No se pudo descargar o abrir la imagen: {str(e)}",
@@ -88,7 +88,7 @@ def predict_one(url: str):
         pred_result = PredictionResult(url=url, detections=pred_obj)
 
     except Exception as e:
-        return PredictionException(
+        return PredictionError(
             url=url,
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
             error=f"Error durante la predicción: {str(e)}",
@@ -97,7 +97,7 @@ def predict_one(url: str):
     try:
         upload_json_to_s3(pred_result.model_dump(), url)
     except Exception as e:
-        return PredictionException(
+        return PredictionError(
             url=url, status=HTTPStatus.UNAUTHORIZED, error=f"Error durante la subida a S3: {str(e)}"
         )
 
