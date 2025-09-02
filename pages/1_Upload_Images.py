@@ -14,7 +14,8 @@ st.markdown("Carga imágenes al bucket S3 cow-detect-maia y ejecutar detección 
 
 S3_BUCKET = "cow-detect-maia"
 # ENDPOINT_URL = "https://example.com"  # Configure your endpoint URL here
-ENDPOINT_URL = "http://localhost:8000/predict"
+# ENDPOINT_URL = "http://localhost:8000/predict" # Old endpoint
+ENDPOINT_URL = "http://localhost:8000/predict-many" # MODIFIED: Using the new batch endpoint
 
 
 @st.cache_resource
@@ -43,14 +44,30 @@ def upload_to_s3(file, s3_client, key):
         return False, f"Error inesperado: {str(e)}"
 
 
-def call_endpoint(image_name, s3_path):
+# COMMENTED OUT: Old function to predict one image at a time.
+# def call_endpoint(image_name, s3_path):
+#     assert ENDPOINT_URL is not None
+#
+#     try:
+#         payload = {"name": image_name, "s3_path": f"s3://{S3_BUCKET}/{s3_path}"}
+#         response = requests.post(ENDPOINT_URL, json=payload, timeout=10)
+#         response.raise_for_status()
+#         return True, response.json()
+#     except requests.exceptions.RequestException as e:
+#         return False, f"Error del endpoint: {str(e)}"
+
+# ADDED: New function to call the batch endpoint.
+def call_batch_endpoint(s3_uris: list[str]):
+    """Calls the batch prediction endpoint with a list of S3 URIs."""
     assert ENDPOINT_URL is not None
+    if not s3_uris:
+        return False, "No S3 URIs provided to endpoint."
 
     try:
-        payload = {"name": image_name, "s3_path": f"s3://{S3_BUCKET}/{s3_path}"}
-        response = requests.post(ENDPOINT_URL, json=payload, timeout=10)
+        payload = {"urls": s3_uris}
+        response = requests.post(ENDPOINT_URL, json=payload, timeout=180)
         response.raise_for_status()
-        return True, response.json()
+        return True, response.json().get("results", [])
     except requests.exceptions.RequestException as e:
         return False, f"Error del endpoint: {str(e)}"
 
@@ -116,31 +133,43 @@ def main():
 
             successful_uploads = []
             failed_uploads = []
-            endpoint_results = []
-            endpoint_success_cnt = 0
+            # MODIFIED: This list will now collect all URIs for a single batch call.
+            s3_uris_for_api = []
+            endpoint_results = [] # This will be populated after the batch call
+            endpoint_success_cnt = 0 # This will be populated after the batch call
 
             for idx, uploaded_file in enumerate(uploaded_files):
-                # Usar nombre de archivo original sin marca de tiempo para organización más limpia
                 s3_key = f"{prefix}{uploaded_file.name}"
-
                 uploaded_file.seek(0)
                 success, message = upload_to_s3(uploaded_file, s3_client, s3_key)
 
                 if success:
+                    s3_uri = f"s3://{S3_BUCKET}/{s3_key}"
                     successful_uploads.append((uploaded_file.name, s3_key, message))
-
-                    # Llamar endpoint
-                    endpoint_result = call_endpoint(uploaded_file.name, s3_key)
-                    if endpoint_result:
-                        endpoint_success, endpoint_response = endpoint_result
-                        endpoint_results.append(
-                            (uploaded_file.name, endpoint_success, endpoint_response)
-                        )
-                        endpoint_success_cnt += endpoint_success
+                    s3_uris_for_api.append(s3_uri) # Collect URI if upload was successful
                 else:
                     failed_uploads.append((uploaded_file.name, message))
 
-                progress_bar.progress((idx + 1) / len(uploaded_files))
+                progress_bar.progress(((idx + 1) / len(uploaded_files)) * 0.5, text=f"Subiendo {uploaded_file.name}...")
+
+            # --- BATCH API CALL (NEW LOGIC) ---
+            if s3_uris_for_api:
+                with st.spinner(f"Procesando {len(s3_uris_for_api)} imágenes con el API..."):
+                    batch_success, batch_response = call_batch_endpoint(s3_uris_for_api)
+
+                if batch_success:
+                    response_map = {res.get("url"): res for res in batch_response}
+                    for uri in s3_uris_for_api:
+                        name = next((n for n, k, u in successful_uploads if f"s3://{S3_BUCKET}/{k}" == uri), None)
+                        if name and uri in response_map:
+                            endpoint_results.append((name, True, response_map[uri]))
+                            endpoint_success_cnt += 1
+                        elif name:
+                            endpoint_results.append((name, False, "No se recibió respuesta del API para esta imagen."))
+                else:
+                    st.error(f"La llamada al API en lote falló: {batch_response}")
+            
+            progress_bar.progress(1.0)
 
             with status_container:
                 if successful_uploads:
