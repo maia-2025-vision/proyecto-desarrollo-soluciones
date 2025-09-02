@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 from pathlib import Path
@@ -129,18 +130,13 @@ class Trainer:
             total_loss.backward()
             self.optimizer.step()
 
-            train_losses.append(total_loss.item())
+            train_losses.append(total_loss.detach().item())
             train_ious.append(mean_iou)
 
             pbar.set_description(
                 f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}"
                 f", avg.mean.iou={np.mean(train_ious):.4f}"
             )
-            # if i % self.print_every_batches == 0:
-            #    logger.info(
-            #        f"Epoch {epoch} - Batch: {i} - Total Loss: {total_loss.item():.4f},"
-            #        f" Mean IoU: {mean_iou:.4f}"
-            #    )
 
         avg_train_loss = np.mean(train_losses)
         avg_train_iou = np.mean(train_ious)
@@ -172,13 +168,13 @@ class Trainer:
                 prediction_dicts = model(images, targets)
                 # In eval mode there are no losses but: boxes, labels, confidence scores
                 try:
-                    scores = [torch.mean(d["scores"]).item() for d in prediction_dicts]
+                    scores = [torch.mean(d["scores"]).detach().item() for d in prediction_dicts]
                     avg_score = np.nanmean(scores)
                 except (KeyError, TypeError, ValueError, RuntimeError):
                     pprint(prediction_dicts)
                     raise
                 # predictions = model(images)
-                mean_iou = calculate_iou(prediction_dicts, targets)
+                mean_iou: float = calculate_iou(prediction_dicts, targets)
 
                 valid_scores.append(avg_score)
                 valid_ious.append(mean_iou)
@@ -241,7 +237,7 @@ def train_faster_rcnn(
     )
     valid_data_loader = DataLoader(
         valid_data_set,
-        batch_size=10,
+        batch_size=2,
         shuffle=False,
         num_workers=dl_params.num_workers,
         collate_fn=faster_rcnn_custom_collate_fn,
@@ -293,7 +289,12 @@ def train_faster_rcnn(
         for epoch in range(num_epochs):
             # Train loop:
             trainer.train_epoch(epoch, model, train_data_loader)
+            torch.cuda.empty_cache()
+            gc.collect()
             trainer.validate_epoch(epoch, model, valid_data_loader)
+            torch.cuda.empty_cache()
+            gc.collect()
+
 
     # Save the fine-tuned model
     if save_path is not None:

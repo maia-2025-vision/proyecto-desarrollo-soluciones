@@ -1,3 +1,4 @@
+import os
 import json
 import subprocess
 from hashlib import sha256
@@ -17,7 +18,7 @@ def get_git_revision_hash() -> str:
         result = subprocess.run(
             ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
         )
-        if result.stdout:
+        if result.stdout and not os.environ["ALLOW_UNCOMMITED_FILES"]:
             raise Exception("There are uncommitted changes in the current working directory.")
 
         # If clean, get the current revision hash
