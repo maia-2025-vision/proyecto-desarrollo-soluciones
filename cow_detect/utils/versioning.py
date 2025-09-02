@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import subprocess
 from hashlib import sha256
 

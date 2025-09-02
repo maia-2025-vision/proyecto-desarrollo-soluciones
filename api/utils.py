@@ -8,6 +8,30 @@ s3_client = session.client("s3")
 bucket = "cow-detect-maia"
 
 
+def parse_s3_url(url: str) -> tuple[str, str]:
+    """Parses an S3 URL into its bucket name and key.
+
+    Args:
+        url (str): The S3 URL to parse.
+
+    Returns:
+        tuple: A tuple containing the bucket name (str) and key (str).
+               Raises if the URL is not a valid S3 URL.
+    """
+    parsed_url = urlparse(url)
+    assert parsed_url.scheme == "s3"
+    bucket = parsed_url.netloc
+    key = parsed_url.path.lstrip("/")
+
+    return bucket, key
+
+
+def download_file_from_s3(url: str) -> bytes:
+    bucket, key = parse_s3_url(url)
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    return response["Body"].read()
+
+
 def upload_json_to_s3(prediction: dict, image_url: str):
     """Sube un diccionario de predicción como JSON a S3.
 

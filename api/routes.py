@@ -1,27 +1,52 @@
 import io
+from http import HTTPStatus
 from pathlib import Path
 
 import requests
 import torch
 import torchvision.transforms as transforms
 from fastapi import APIRouter, HTTPException
+from loguru import logger
 from PIL import Image
 
-from api.utils import get_predictions_from_s3_folder, list_flyover_folders, upload_json_to_s3
+from api.types import (
+    PredictionException,
+    PredictionResult,
+    PredictManyRequest,
+    PredictManyResult,
+    PredictOneRequest,
+)
+from api.utils import (
+    download_file_from_s3,
+    get_predictions_from_s3_folder,
+    list_flyover_folders,
+    upload_json_to_s3,
+)
 from cow_detect.predict.batch import get_prediction_model
 
 router = APIRouter()
 
 # Carga el modelo solo una vez
-model_weights_path = Path("data/training/teo/v1/faster-rcnn-toy/model.pth")
+model_weights_path = Path("data/training/teo/v1/faster-rcnn/model.pth")
 model = get_prediction_model(model_weights_path)
 model.eval()
 
 transform = transforms.ToTensor()
 
 
-@router.post("/predict")
-async def predict(image_urls: list[str]):
+def download_image_from_url(url: str):
+    if url.startswith("s3://"):  # an s3 url that might not be public!
+        file_bytes = download_file_from_s3(url)
+    else:  # regular "public" url
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # lanza excepción si no es 200 OK
+        file_bytes = response.content
+
+    return Image.open(io.BytesIO(file_bytes)).convert("RGB")
+
+
+@router.post("/predict-many")
+async def predict_many_endpoint(req: PredictManyRequest):
     """Realiza la predicción a partir de una lista de URLs de imágenes.
 
     Descarga cada imagen, la transforma en tensor, ejecuta el modelo de predicción
@@ -29,36 +54,54 @@ async def predict(image_urls: list[str]):
     """
     results = []
 
-    for url in image_urls:
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()  # lanza excepción si no es 200 OK
-            image = Image.open(io.BytesIO(response.content)).convert("RGB")
-        except Exception as e:
-            results.append(
-                {"url": url, "error": f"No se pudo descargar o abrir la imagen: {str(e)}"}
-            )
-            continue
+    for url in req.image_urls:
+        result = predict_one(url)
+        results.append(result)
 
-        image_tensor = transform(image).unsqueeze(0)  # batch size 1
+    return PredictManyResult(results=results)
 
-        try:
-            with torch.no_grad():
-                predictions = model(image_tensor)
-            pred = predictions[0]
-            pred_json = {k: v.tolist() for k, v in pred.items()}
 
-            pred_result = {"url": url, "predictions": pred_json}
+@router.post("/predict")
+def predict_one_endpoint(req: PredictOneRequest) -> PredictionResult:
+    return predict_one(url=req.s3_path)
 
-            _ = upload_json_to_s3(pred_result, url)
 
-            results.append(pred_result)
-        except Exception as e:
-            results.append(
-                {"url": url, "error": f"Error durante la predicción o subida a S3: {str(e)}"}
-            )
+def predict_one(url: str):
+    try:
+        image = download_image_from_url(url)
+    except Exception as e:
+        return PredictionException(
+            url=url,
+            status=HTTPStatus.UNAUTHORIZED,
+            error=f"No se pudo descargar o abrir la imagen: {str(e)}",
+        )
 
-    return {"results": results}
+    image_tensor = transform(image).unsqueeze(0)  # batch size 1
+
+    try:
+        with torch.no_grad():
+            model_outputs = model(image_tensor)
+
+        pred = model_outputs[0]  # just the first one since we only passed one image in the batch
+        logger.info(f"pred has keys: {pred.keys()}")
+        pred_obj = {k: v.tolist() for k, v in pred.items()}
+        pred_result = PredictionResult(url=url, detections=pred_obj)
+
+    except Exception as e:
+        return PredictionException(
+            url=url,
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+            error=f"Error durante la predicción: {str(e)}",
+        )
+
+    try:
+        upload_json_to_s3(pred_result.model_dump(), url)
+    except Exception as e:
+        return PredictionException(
+            url=url, status=HTTPStatus.UNAUTHORIZED, error=f"Error durante la subida a S3: {str(e)}"
+        )
+
+    return pred_result
 
 
 @router.get("/flyovers/{farm}")

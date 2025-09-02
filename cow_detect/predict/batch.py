@@ -18,7 +18,7 @@ from cow_detect.utils.debug import summarize
 
 
 class ImagesPredictDataset(Dataset):
-    """Dataset class used for prediction"""
+    """Dataset class used for prediction."""
 
     def __init__(
         self,
@@ -27,12 +27,13 @@ class ImagesPredictDataset(Dataset):
         force_resize: bool = True,
         limit: None | int = None,
     ) -> None:
-        """A torch dataset that provides images as tensors together with their paths
+        """A torch dataset that provides images as tensors together with their paths.
 
         :param root_dir: Directory to find images (recursively)
         :param extensions: Valid image extensions
         :param force_resize: Whether to force resize of images to
-        :param limit: If not None, limit to this maximum number of images to return (for quicker testing)
+        :param limit: If not None, limit to this maximum number of images
+                      to return (for quicker testing)
         """
         self.root_dir = root_dir
         # self.transforms = transforms
@@ -65,14 +66,18 @@ class ImagesPredictDataset(Dataset):
         return int(math.ceil(len(self.image_paths) / batch_size))
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, Path, str | None]:
-        """Get the i-th image from this dataset as torch tensor along with its path and possibly an error"""
+        """Get the i-th image item this dataset.
+
+        This will be a tuple of an image (as a torch tensor), along with its path
+        and possibly an error.
+        """
         img_path = self.image_paths[idx]
         # This simple rule works for SKY but it doesnt work for ICAERUS
 
         error: str | None = None  # only set if we fail to load the imge
         try:
             image = Image.open(img_path).convert("RGB")
-            original_size = image.size
+            # original_size = image.size
             if self.target_size is None:
                 self.target_size = image.size
                 logger.info(
@@ -87,7 +92,8 @@ class ImagesPredictDataset(Dataset):
                         logger.warning(
                             f"Image loaded from {img_path!s} has size {image.size} "
                             f"which differs from {self.target_size}. "
-                            f"If you are processing batches of size > 1, this will cause an error downstream."
+                            f"If you are processing batches of size > 1, this will"
+                            " cause an error downstream."
                         )
 
         except OSError as err:
@@ -97,10 +103,10 @@ class ImagesPredictDataset(Dataset):
             )
             assert self.target_size is not None
             image = Image.new("RGB", self.target_size, (0, 0, 0))
-            original_size = None
+            # original_size = None
             error = str(err)
 
-        processing_size = image.size
+        # processing_size = image.size
         image_tensor = self.img_to_tensor(image)
         del image
 
@@ -213,7 +219,7 @@ def predict_from_path_by_batches(
 
 
 # %%
-def __interactive_testing__():
+def _interactive_testing_():
     # %%
     predict_from_path_by_batches(
         images_path=Path("data/sky/Dataset1"),
@@ -225,11 +231,13 @@ def __interactive_testing__():
     )
     # %%
     example_output = """
-        {"image_path": "data/sky/Dataset2/img/DJI_0036.JPG", "total_detections": 3, "counts_by_label": {"1": 3},
+        {"image_path": "data/sky/Dataset2/img/DJI_0036.JPG", "total_detections": 3,
+        "counts_by_label": {"1": 3},
         "avg_score": 0.9464678168296814, "prediction": {
         "boxes": [[587.2669677734375, 1636.1265869140625, 686.401123046875, 1731.468017578125],
                   [761.794189453125, 2817.29345703125, 854.7379150390625, 2952.552490234375],
-                  [315.4936828613281, 2670.287841796875, 419.01641845703125, 2742.505615234375]], "labels": [1, 1, 1],
+                  [315.4936828613281, 2670.287841796875, 419.01641845703125, 2742.505615234375]],
+                    "labels": [1, 1, 1],
         "scores": [0.996434211730957, 0.9948186278343201, 0.8481504917144775]}, "error": null}
     """
     obj = json.loads(example_output)
