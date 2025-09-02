@@ -10,7 +10,7 @@ from loguru import logger
 st.set_page_config(page_title="Cargar Imágenes", layout="wide")
 
 st.title("Cargar Imágenes a S3")
-st.markdown("Carga imágenes al bucket S3 cow-detect-maia y ejecutar detecció    n sobre las mismas")
+st.markdown("Carga imágenes al bucket S3 cow-detect-maia y ejecutar detección sobre las mismas")
 
 S3_BUCKET = "cow-detect-maia"
 # ENDPOINT_URL = "https://example.com"  # Configure your endpoint URL here
@@ -107,7 +107,7 @@ def main():
         st.info(f"{len(uploaded_files)} archivo(s) seleccionado(s)")
 
         if st.button(
-            "Cargar a S3 y Ejecutar Deteccion",
+            "Cargar a S3 y Ejecutar Detección",
             type="primary",
             disabled=(not finca or not sobrevuelo),
         ):
@@ -146,7 +146,7 @@ def main():
                 if successful_uploads:
                     st.success(f"Se cargaron exitosamente {len(successful_uploads)} archivo(s)")
                     with st.expander("Ver archivos cargados"):
-                        for name, key, _url in successful_uploads:
+                        for name, key, _ in successful_uploads:
                             st.text(f"{name} → s3://{S3_BUCKET}/{key}")
 
                 if failed_uploads:

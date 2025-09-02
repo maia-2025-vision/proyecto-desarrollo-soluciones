@@ -130,6 +130,5 @@ help="Start the prediction API service"
 cmd="python api/run_api.py"
 
 [tool.poe.tasks.dashboard]
-env = { AWS_PROFILE = "dvc-user" }
 help="Start the streamlit dashboard"
 cmd="uv run streamlit run streamlit_app.py"
