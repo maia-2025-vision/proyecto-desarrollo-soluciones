@@ -107,7 +107,7 @@ def main():
         st.info(f"{len(uploaded_files)} archivo(s) seleccionado(s)")
 
         if st.button(
-            "Cargar a S3 y Ejecutar Deteccion",
+            "Cargar a S3 y Ejecutar Detección",
             type="primary",
             disabled=(not finca or not sobrevuelo),
         ):
