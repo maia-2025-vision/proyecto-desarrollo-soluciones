@@ -1,4 +1,5 @@
 experiment_name: "faster-rcnn-v1"
+device: "cuda"
 num_epochs: 20
 train_fraction: 0.50
 valid_fraction: 0.10
