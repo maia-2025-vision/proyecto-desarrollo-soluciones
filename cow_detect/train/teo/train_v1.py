@@ -79,6 +79,7 @@ class TrainCfg(BaseModel):
     data_loader: DataLoaderParams
     num_epochs: int
     optimizer: OptimizerParams
+    device: str = "cpu"
 
 
 class Trainer:
@@ -205,12 +206,13 @@ def train_faster_rcnn(
     ),
 ) -> None:
     """Train a faster rcnn model with a given config and leaving result in a given model_path."""
-    # Set up the device
-    # device = auto_detect_device()
-    device = torch.device("cpu")
-
+    
+    logger.info(f"Reading train_cfg from: {train_cfg_path}")
     cfg_dict = yaml.load(train_cfg_path.open("rt"), Loader=yaml.Loader)
     train_cfg: TrainCfg = TrainCfg.model_validate(cfg_dict)
+
+    logger.info(f"Using device={train_cfg.device} as specified in train_cfg.")
+    device = torch.device(train_cfg.device)
 
     train_img_paths, valid_img_paths = train_validation_split(
         imgs_dir=train_data_path / "img",
