@@ -125,29 +125,29 @@ def image_to_bytes(image: Image.Image) -> bytes:
 # --- Main Page UI ---
 def main():
     st.set_page_config(page_title="Ver Detecciones", layout="wide")
-    st.sidebar.title("Opciones de Visualización") # ADDED: Sidebar title
+    st.sidebar.title("Opciones de Visualización")
     confidence_threshold = st.sidebar.slider(
         "Umbral de Confianza", 0.0, 1.0, 0.5, 0.05
     )
     
-    st.title("Visualizador de Detecciones")
+    st.title("Visualizador de Detecciones🖼️")
 
-    # The single source of truth is the session state populated by the upload page
-    if "detection_data" in st.session_state and st.session_state.detection_data.get("images"):
-        images_to_display = st.session_state.detection_data["images"]
+    # Leer el historial de detecciones persistente de la sesión
+    if "detection_history" in st.session_state and st.session_state.detection_history:
+        images_to_display = st.session_state.detection_history
         
-        finca = st.session_state.get('finca', 'N/A')
-        sobrevuelo = st.session_state.get('sobrevuelo', 'N/A')
-        st.header(f"Resultados para Finca: {finca} | Sobrevuelo: {sobrevuelo}")
-        st.info(f"Se encontraron {len(images_to_display)} imágenes para mostrar.")
-
-        # --- Refactored Logic for Single Loop Processing ---
+        st.info(f"Se encontraron {len(images_to_display)} imágenes en el historial para mostrar.")
+        
+        # --- Lógica para preparar el botón de Descargar Todo (ZIP) ---
+        # (Se mantiene la lógica eficiente de un solo bucle)
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-            # This single loop will process images for display and for the zip file simultaneously.
             for img_data in images_to_display:
                 st.markdown("---")
-                st.subheader(f"Imagen: {img_data.get('name', 'Nombre no disponible')}")
+                # Mostrar Finca y Sobrevuelo junto al nombre de la imagen
+                finca = img_data.get('finca', 'N/A')
+                sobrevuelo = img_data.get('sobrevuelo', 'N/A')
+                st.subheader(f"Imagen: {img_data.get('name', 'N/A')} (Finca: {finca} | Sobrevuelo: {sobrevuelo})")
                 
                 image = load_image(img_data)
                 
@@ -171,7 +171,7 @@ def main():
 
                         # 2. Add the annotated image to the zip file in memory
                         zip_file.writestr(
-                            f"{img_data.get('name', 'image.png')}", 
+                            f"{finca}_{sobrevuelo}_{img_data.get('name', 'image.png')}", 
                             image_to_bytes(annotated_image)
                         )
 
@@ -182,7 +182,8 @@ def main():
                            label="Descargar imagen anotada",
                            data=image_to_bytes(annotated_image),
                            file_name=f"annotated_{img_data.get('name', 'image.png')}",
-                           mime="image/png"
+                           mime="image/png",
+                           key=f"download_{img_data.get('name')}" # Añadida key única
                         )
                     else:
                         st.image(image, width='stretch')
@@ -196,7 +197,7 @@ def main():
         st.sidebar.download_button(
             label="Descargar Todo (ZIP)",
             data=zip_buffer.getvalue(),
-            file_name=f"resultados_{finca}_{sobrevuelo}.zip",
+            file_name="resultados_deteccion.zip",
             mime="application/zip",
         )
 

@@ -9,7 +9,7 @@ from loguru import logger
 
 st.set_page_config(page_title="Cargar Imágenes", layout="wide")
 
-st.title("Cargar Imágenes a S3")
+st.title("Cargar Imágenes 📤")
 st.markdown("Carga imágenes al bucket S3 cow-detect-maia y ejecutar detección sobre las mismas")
 
 S3_BUCKET = "cow-detect-maia"
@@ -128,6 +128,10 @@ def main():
             type="primary",
             disabled=(not finca or not sobrevuelo),
         ):
+            # --- Guardar Finca y Sobrevuelo en la sesión ---
+            st.session_state['finca'] = finca
+            st.session_state['sobrevuelo'] = sobrevuelo
+
             progress_bar = st.progress(0)
             status_container = st.container()
 
@@ -203,20 +207,25 @@ def main():
                             else:
                                 st.error(f"{name}: {response}")
             
-            # ---Store results in session_state for the other page ---
-            images_for_session = []
+            # --- Almacenar resultados en el historial de la sesión ---
+            if 'detection_history' not in st.session_state:
+                st.session_state['detection_history'] = []
+
             if endpoint_results:
                 for name, success, response in endpoint_results:
                     if success:
-                        # Find the corresponding s3_uri from the successful_uploads list
                         s3_key = next((k for n, k, u in successful_uploads if n == name), None)
                         if s3_key:
-                            images_for_session.append({
+                            # Añadir el resultado al historial persistente
+                            st.session_state['detection_history'].append({
                                 "name": name,
                                 "s3_uri": f"s3://{S3_BUCKET}/{s3_key}",
-                                "detections": response.get("detections", {})
+                                "detections": response.get("detections", {}),
+                                "finca": finca,
+                                "sobrevuelo": sobrevuelo
                             })
-            st.session_state['detection_data'] = {"images": images_for_session}
+            
+            st.toast(f"¡Procesamiento completado para {len(endpoint_results)} imágenes!", icon="🎉")
 
 
 if __name__ == "__main__":
