@@ -281,8 +281,8 @@ def train_faster_rcnn(
         # mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
 
         mlflow.log_param("model_class", type(model).__name__)
-        mlflow.log_paran("train_data_frac", train_cfg.train_fraction)
-        mlflow.log_paran("valid_data_frac", train_cfg.valid_fraction)
+        mlflow.log_param("train_data_frac", train_cfg.train_fraction)
+        mlflow.log_param("valid_data_frac", train_cfg.valid_fraction)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)
         mlflow.log_param("lr", opt_params.learning_rate)
