@@ -7,6 +7,7 @@ class DataLoaderParams(BaseModel):
     batch_size: int
     data_shuffle: bool
     num_workers: int
+    valid_batch_size: int = 2
 
 
 class OptimizerParams(BaseModel):

@@ -1,5 +1,5 @@
 experiment_name: "faster-rcnn-v1"
-device: "cuda"
+device: "cpu"
 num_epochs: 15
 train_fraction: 0.30
 valid_fraction: 0.10
@@ -7,6 +7,7 @@ data_loader:
   batch_size: 2
   data_shuffle: true
   num_workers: 0
+  valid_batch_size: 10
 optimizer:
   learning_rate: 0.005
   momentum: 0.9
