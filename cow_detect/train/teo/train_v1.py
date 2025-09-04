@@ -274,14 +274,14 @@ def train_faster_rcnn(
 
     git_revision = get_git_revision_hash()
     experiment = mlflow.set_experiment(train_cfg.experiment_name)
-    cfg_md5 = md5(train_cfg.read_bytes()).hexdigest()
+    cfg_md5 = md5(train_cfg_path.read_bytes()).hexdigest()
 
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
         mlflow.log_param("cfg_md5", cfg_md5)
-        mlflow.log_param("cfg_path", str(train_cfg.config_path))
-        mlflow.log_param("cfg_full", str(train_cfg.read_text()))
+        mlflow.log_param("cfg_path", str(train_cfg_path))
+        mlflow.log_param("cfg_full", str(train_cfg_path.read_text()))
         mlflow.log_param("model_class", type(model).__name__)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)
