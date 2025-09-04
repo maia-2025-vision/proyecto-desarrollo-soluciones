@@ -36,6 +36,10 @@ class SkyDataset(Dataset):
 
         # all_paths = list(self.image_dir.glob(f"*.{ext}"))
         logger.info(f"dataset: {self.name} - image_paths has : {len(image_paths)}")
+        fnames = [path.name for path in image_paths]
+        fnames_first5 = " ".join(fnames[0:5])
+        fnames_last5 = " ".join(fnames[-5:])
+        logger.info(f"dataset: {self.name} - fnames : [{fnames_first5}...{fnames_last5}]")
 
         broken_imgs_file = root_dir / "broken-imgs.txt"
         if broken_imgs_file.exists():
