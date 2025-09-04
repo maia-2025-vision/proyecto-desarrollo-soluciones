@@ -276,7 +276,7 @@ def train_faster_rcnn(
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
         mlflow.log_param("cfg_path", str(train_cfg_path))
-        mlflow.log_param("cfg_md5", md5(train_cfg_path.read_bytes().hexdigest()))
+        mlflow.log_param("cfg_md5", md5(train_cfg_path.read_bytes()).hexdigest())
         mlflow.log_param("cfg_full", train_cfg_path.read_text())
         # mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
 
