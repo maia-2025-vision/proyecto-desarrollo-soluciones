@@ -215,6 +215,7 @@ def train_faster_rcnn(
 
     train_img_paths, valid_img_paths = train_validation_split(
         imgs_dir=train_data_path / "img",
+        sort_paths=train_cfg.sort_paths,
         train_fraction=train_cfg.train_fraction,
         valid_fraction=train_cfg.valid_fraction,
     )
