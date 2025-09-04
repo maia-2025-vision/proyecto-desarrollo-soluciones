@@ -1,5 +1,6 @@
 import json
 import os
+from hashlib import md5
 from pathlib import Path
 from pprint import pprint
 
@@ -11,7 +12,7 @@ import tqdm
 import typer
 import yaml
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import (  # type: ignore[import-untyped]
@@ -74,6 +75,11 @@ class TrainCfg(BaseModel):
     """Parameters fort training."""
 
     experiment_name: str
+    sort_paths: bool = Field(
+        True,
+        description="whether to sort paths from input dataset before splitting,"
+                    "default true for greater reproducibility"
+    )
     train_fraction: float
     valid_fraction: float
     data_loader: DataLoaderParams
@@ -135,11 +141,6 @@ class Trainer:
                 f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}"
                 f", avg.mean.iou={np.mean(train_ious):.4f}"
             )
-            # if i % self.print_every_batches == 0:
-            #    logger.info(
-            #        f"Epoch {epoch} - Batch: {i} - Total Loss: {total_loss.item():.4f},"
-            #        f" Mean IoU: {mean_iou:.4f}"
-            #    )
 
         avg_train_loss = np.mean(train_losses)
         avg_train_iou = np.mean(train_ious)
@@ -273,11 +274,14 @@ def train_faster_rcnn(
 
     git_revision = get_git_revision_hash()
     experiment = mlflow.set_experiment(train_cfg.experiment_name)
+    cfg_md5 = md5(train_cfg.read_bytes()).hexdigest()
 
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
-        mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
+        mlflow.log_param("cfg_md5", cfg_md5)
+        mlflow.log_param("cfg_path", str(train_cfg.config_path))
+        mlflow.log_param("cfg_full", str(train_cfg.read_text()))
         mlflow.log_param("model_class", type(model).__name__)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)

@@ -3,11 +3,11 @@ stages:
   train-v1:
     cmd: >-
       python cow_detect/train/teo/train_v1.py
-      --cfg data/training/teo/v1/train_cfg.yaml 
+      --cfg cow_detect/train/teo/train_cfg_v1.yaml 
       --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn/
     deps:
-      - data/training/teo/v1/train_cfg.yaml
+      - cow_detect/train/teo/train_cfg_v1.yaml
       - data/sky/Dataset1
     outs:
       - data/training/teo/v1/faster-rcnn/

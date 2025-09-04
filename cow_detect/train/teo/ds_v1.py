@@ -25,6 +25,7 @@ class SkyDataset(Dataset):
         name: str,
         root_dir: Path,
         image_paths: list[Path],
+        sort_paths: bool = True,
         annot_subdir: str = "ann",
         transforms: TransformType | None = None,  # TODO: what should the type really be?
     ) -> None:
@@ -35,6 +36,7 @@ class SkyDataset(Dataset):
         self.annotation_dir = root_dir / annot_subdir
 
         # all_paths = list(self.image_dir.glob(f"*.{ext}"))
+        image_paths = sorted(image_paths) if sort_paths else image_paths
         logger.info(f"dataset: {self.name} - image_paths has : {len(image_paths)}")
         fnames = [path.name for path in image_paths]
         fnames_first5 = " ".join(fnames[0:5])
