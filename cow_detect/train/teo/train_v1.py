@@ -1,6 +1,7 @@
 import gc
 import json
 import os
+from hashlib import md5
 from pathlib import Path
 from pprint import pprint
 
@@ -183,7 +184,7 @@ class Trainer:
                     f", avg.mean.iou={np.mean(valid_ious):.4f}"
                 )
 
-        avg_valid_score = np.mean(valid_scores)
+        avg_valid_score = np.nanmean(valid_scores)
         avg_valid_iou = np.mean(valid_ious)
         mlflow.log_metric("avg_valid_score", float(avg_valid_score), step=epoch)
         mlflow.log_metric("avg_valid_iou", float(avg_valid_iou), step=epoch)
@@ -274,8 +275,14 @@ def train_faster_rcnn(
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
-        mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
+        mlflow.log_param("cfg_path", str(train_cfg_path))
+        mlflow.log_param("cfg_md5", md5(train_cfg_path.read_bytes().hexdigest()))
+        mlflow.log_param("cfg_full", train_cfg_path.read_text())
+        # mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
+
         mlflow.log_param("model_class", type(model).__name__)
+        mlflow.log_paran("train_data_frac", train_cfg.train_fraction)
+        mlflow.log_paran("valid_data_frac", train_cfg.valid_fraction)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)
         mlflow.log_param("lr", opt_params.learning_rate)
