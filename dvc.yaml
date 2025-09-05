@@ -9,10 +9,17 @@ stages:
 
   std-sky-ds2:
     cmd: >-
-      python cow_detect/utils/standardize.py
+      cow_detect/utils/standardize.py
       data/sky/Dataset2 --kind sky --out data/standardized/sky.dataset2.jsonl
     deps: [data/sky/Dataset2, cow_detect/utils/standardize.py]
     outs: [data/standardized/sky.dataset2.jsonl]
+
+  std-sky-all:
+    cmd: >-
+      cat data/standardized/sky.dataset1.jsonl data/standardized/sky.dataset2.jsonl 
+      > data/standardized/sky.all.jsonl
+    deps: [ data/standardized/sky.dataset1.jsonl, data/standardized/sky.dataset2.jsonl ]
+    outs: [ data/standardized/sky.all.jsonl ]
 
   std-icaerus-derval:
     cmd: >-
@@ -42,6 +49,24 @@ stages:
     deps: [cow_detect/utils/standardize.py, data/icaerus/Other_farms]
     outs: [data/standardized/icaerus.other.jsonl]
 
+  std-icaerus-all:
+    cmd: >-
+      cat
+      data/standardized/icaerus.derval.jsonl
+      data/standardized/icaerus.jalogny.jsonl
+      data/standardized/icaerus.mauron.jsonl
+      data/standardized/icaerus.other.jsonl
+      > data/standardized/icaerus.all.jsonl
+    deps: [
+      data/standardized/icaerus.derval.jsonl,
+      data/standardized/icaerus.jalogny.jsonl,
+      data/standardized/icaerus.mauron.jsonl,
+      data/standardized/icaerus.other.jsonl
+    ]
+    outs: [
+      data/standardized/icaerus.all.jsonl
+    ]
+
   train-v1:
     cmd: >-
       cow_detect/train/teo/train_v1.py
@@ -65,7 +90,6 @@ stages:
       - data/sky/Dataset1
     outs:
       - data/training/teo/v11/faster-rcnn/
-
 
   train-v1-toy:
     cmd: >-

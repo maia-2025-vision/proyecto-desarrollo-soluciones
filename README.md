@@ -32,6 +32,19 @@ pre-commit install
 dvc pull  # .venv debe estar activado
 ```
 
+## (Re)Generar conjuntos de datos standarizados
+
+Toma unos tres minutos:
+```bash
+dvc repro -s std-sky-ds1    
+dvc repro -s std-sky-ds2
+dvc repro -s std-sky-all
+dvc repro -s std-icaerus-derval
+dvc repro -s std-icaerus-jalogny
+dvc repro -s std-icaerus-mauron
+dvc repro -s std-icaerus-other
+dvc repro -s std-icaerus-all
+```
 
 ## Entrenamiento
 
