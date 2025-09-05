@@ -1,8 +1,8 @@
 experiment_name: "faster-rcnn-v2"
 num_epochs: 10
 sort_paths: true
-train_fraction: 0.5
-valid_fraction: 0.1
+train_fraction: 1.0
+valid_fraction: 0.2
 data_loader:
   batch_size: 2
   data_shuffle: true

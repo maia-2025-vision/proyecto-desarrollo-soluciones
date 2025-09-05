@@ -80,11 +80,11 @@ stages:
       python cow_detect/train/teo/train_v2_std.py
       --cfg cow_detect/train/teo/train_cfg_v2.yaml  
       --train-data data/standardized/icaerus.derval.jsonl
-      --valid-data data/standardized/icaerus.other.jsonl
+      --valid-data data/standardized/icaerus.jalogny.jsonl
       --save-path data/training/teo/v2-derval
     deps:
       - data/standardized/icaerus.derval.jsonl
-      - data/standardized/icaerus.other.jsonl
+      - data/standardized/icaerus.jalogny.jsonl
     outs:
       - data/training/teo/v2-derval
 
