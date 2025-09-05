@@ -8,48 +8,23 @@ import numpy as np
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 import zipfile 
+from api.utils import download_file_from_s3
+from loguru import logger
 
-# --- AWS S3 Client (Minimal) ---
-@st.cache_resource
-def get_s3_client():
-    """Inicializa un cliente de S3 de boto3."""
+# --- Lógica de Carga de Imágenes (Refactorizada) ---
+def load_image(img_data: dict) -> Optional[Image.Image]:
+    """Carga una imagen desde una S3 URI usando una función de utilidad centralizada."""
+    s3_uri = img_data.get("s3_uri")
+    if not s3_uri:
+        st.warning(f"No se encontró 's3_uri' para: {img_data.get('name')}")
+        return None
+
     try:
-        #Se especifica el perfil para asegurar que se usen las credenciales correctas.
-        session = boto3.Session(profile_name="dvc-user")
-        return session.client("s3")
-    except NoCredentialsError:
-        st.error("Credenciales de AWS no encontradas. No se podrán cargar imágenes desde S3.")
-        return None
+        image_bytes = download_file_from_s3(s3_uri)
+        return Image.open(io.BytesIO(image_bytes))
     except Exception as e:
-        st.error(f"No se pudo crear el cliente S3: {e}")
+        st.error(f"Error al cargar la imagen desde {s3_uri}: {e}")
         return None
-
-# --- Image Loading Logic ---
-def load_image(img_data: dict):
-    """Loads an image from a local path or an S3 URI based on the provided data."""
-    if "image_path" in img_data:  # Local preview case from 1_Upload_Images.py
-        try:
-            return Image.open(img_data["image_path"])
-        except FileNotFoundError:
-            st.error(f"Archivo de vista previa no encontrado: {img_data['image_path']}")
-            return None
-    
-    elif "s3_uri" in img_data:  # S3/API case
-        s3_client = get_s3_client()
-        if not s3_client: return None
-        try:
-            bucket, key = img_data["s3_uri"].replace("s3://", "").split("/", 1)
-            response = s3_client.get_object(Bucket=bucket, Key=key)
-            return Image.open(io.BytesIO(response['Body'].read()))
-        except ClientError as e:
-            st.error(f"Error de acceso a S3 ({img_data['s3_uri']}): {e.response['Error']['Message']}")
-            return None
-        except Exception as e:
-            st.error(f"Error inesperado cargando desde S3: {e}")
-            return None
-            
-    st.warning(f"No se encontró 'image_path' o 's3_uri' para: {img_data.get('name')}")
-    return None
 
 # --- Drawing Logic ---
 def draw_bounding_boxes(image: Image.Image, detections: list, confidence_threshold: float) -> Image.Image:
@@ -85,7 +60,8 @@ def draw_bounding_boxes(image: Image.Image, detections: list, confidence_thresho
             if isinstance(box, list) and len(box) == 4:
                 draw.rectangle(box, outline=color, width=5)
                 
-                score_text = f"{score:.2f}"
+                # score_text = f"{score:.2f}"  # Decimal (ej. 0.95)
+                score_text = f"{score * 100:.0f}%" # Porcentaje (ej. 95%)
                 text_position = (box[0], box[1] - (font_size + 5))
                 
                 # --- Lógica para fondo translúcido nítido ---
@@ -106,9 +82,9 @@ def draw_bounding_boxes(image: Image.Image, detections: list, confidence_thresho
                     img_with_boxes = Image.alpha_composite(img_with_boxes, overlay)
                     draw = ImageDraw.Draw(img_with_boxes) # Volver a crear el objeto Draw
 
-                except Exception:
-                    # Fallback si falla el efecto
-                    pass
+                except Exception as e:
+                    # En lugar de un 'pass' silencioso, registramos una advertencia.
+                    logger.warning(f"No se pudo dibujar el efecto de fondo traslúcido para el score: {e}")
                 
                 # Dibujar el texto encima del área procesada
                 draw.text(text_position, score_text, font=font, fill=color)
@@ -126,25 +102,53 @@ def image_to_bytes(image: Image.Image) -> bytes:
 def main():
     st.set_page_config(page_title="Ver Detecciones", layout="wide")
     st.sidebar.title("Opciones de Visualización")
-    confidence_threshold = st.sidebar.slider(
-        "Umbral de Confianza", 0.0, 1.0, 0.5, 0.05
-    )
     
+    confidence_percent = st.sidebar.slider(
+        "Umbral de Confianza", 
+        min_value=0, 
+        max_value=100, 
+        value=50, 
+        step=5,
+        format="%d%%"
+    )
+    confidence_threshold = confidence_percent / 100.0
+
     st.title("Visualizador de Detecciones🖼️")
 
     # Leer el historial de detecciones persistente de la sesión
     if "detection_history" in st.session_state and st.session_state.detection_history:
-        images_to_display = st.session_state.detection_history
+        history = st.session_state.detection_history
         
-        st.info(f"Se encontraron {len(images_to_display)} imágenes en el historial para mostrar.")
+        # --- FILTROS POR FINCA Y SOBREVUELO ---
+        st.sidebar.divider()
+        st.sidebar.subheader("Filtrar Resultados")
         
-        # --- Lógica para preparar el botón de Descargar Todo (ZIP) ---
-        # (Se mantiene la lógica eficiente de un solo bucle)
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+        fincas = sorted(list(set(item['finca'] for item in history)))
+        selected_finca = st.sidebar.selectbox("Seleccionar Finca", ["Todas"] + fincas)
+        
+        if selected_finca and selected_finca != "Todas":
+            sobrevuelos = sorted(list(set(item['sobrevuelo'] for item in history if item['finca'] == selected_finca)))
+            selected_sobrevuelo = st.sidebar.selectbox("Seleccionar Sobrevuelo", ["Todos"] + sobrevuelos)
+        else:
+            selected_sobrevuelo = "Todos"
+
+        # --- Filtrar imágenes para mostrar ---
+        images_to_display = history
+        if selected_finca != "Todas":
+            images_to_display = [item for item in images_to_display if item['finca'] == selected_finca]
+        if selected_sobrevuelo != "Todos":
+            images_to_display = [item for item in images_to_display if item['sobrevuelo'] == selected_sobrevuelo]
+
+        
+        if not images_to_display:
+            st.warning("No se encontraron imágenes con los filtros seleccionados.")
+        else:
+            st.info(f"Mostrando {len(images_to_display)} imagen(es) con los filtros seleccionados.")
+            st.divider()
+
+            # Bucle para mostrar las imágenes filtradas
             for img_data in images_to_display:
-                st.markdown("---")
-                # Mostrar Finca y Sobrevuelo junto al nombre de la imagen
+                st.divider() 
                 finca = img_data.get('finca', 'N/A')
                 sobrevuelo = img_data.get('sobrevuelo', 'N/A')
                 st.subheader(f"Imagen: {img_data.get('name', 'N/A')} (Finca: {finca} | Sobrevuelo: {sobrevuelo})")
@@ -166,14 +170,7 @@ def main():
 
                         annotated_image = draw_bounding_boxes(image, reformatted_detections, confidence_threshold)
                         
-                        # 1. Display the annotated image
                         st.image(annotated_image, width='stretch')
-
-                        # 2. Add the annotated image to the zip file in memory
-                        zip_file.writestr(
-                            f"{finca}_{sobrevuelo}_{img_data.get('name', 'image.png')}", 
-                            image_to_bytes(annotated_image)
-                        )
 
                         with st.expander("Ver datos de detección (JSON)"):
                             st.json(detections_dict)
@@ -183,7 +180,7 @@ def main():
                            data=image_to_bytes(annotated_image),
                            file_name=f"annotated_{img_data.get('name', 'image.png')}",
                            mime="image/png",
-                           key=f"download_{img_data.get('name')}" # Añadida key única
+                           key=f"download_{img_data.get('name')}"
                         )
                     else:
                         st.image(image, width='stretch')
@@ -192,14 +189,6 @@ def main():
                     st.error("No se pudo cargar o mostrar la imagen.")
                     with st.expander("Ver datos del intento de carga"):
                         st.json(img_data)
-        
-        # This is now rendered after the loop has populated the zip buffer.
-        st.sidebar.download_button(
-            label="Descargar Todo (ZIP)",
-            data=zip_buffer.getvalue(),
-            file_name="resultados_deteccion.zip",
-            mime="application/zip",
-        )
 
     else:
         st.info("Aún no hay datos para mostrar. Por favor, vaya a la página de carga para procesar imágenes.")
