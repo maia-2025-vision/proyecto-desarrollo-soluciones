@@ -16,10 +16,11 @@ stages:
 
   std-sky-all:
     cmd: >-
-      cat data/standardized/sky.dataset1.jsonl data/standardized/sky.dataset2.jsonl 
-      > data/standardized/sky.all.jsonl
-    deps: [ data/standardized/sky.dataset1.jsonl, data/standardized/sky.dataset2.jsonl ]
-    outs: [ data/standardized/sky.all.jsonl ]
+      cat data/standardized/sky.dataset1.jsonl data/standardized/sky.dataset2.jsonl  >
+      data/standardized/sky.all.jsonl
+    deps: [data/standardized/sky.dataset1.jsonl, 
+        data/standardized/sky.dataset2.jsonl]
+    outs: [data/standardized/sky.all.jsonl]
 
   std-icaerus-derval:
     cmd: >-
@@ -57,51 +58,33 @@ stages:
       data/standardized/icaerus.mauron.jsonl
       data/standardized/icaerus.other.jsonl
       > data/standardized/icaerus.all.jsonl
-    deps: [
-      data/standardized/icaerus.derval.jsonl,
-      data/standardized/icaerus.jalogny.jsonl,
-      data/standardized/icaerus.mauron.jsonl,
-      data/standardized/icaerus.other.jsonl
-    ]
-    outs: [
-      data/standardized/icaerus.all.jsonl
-    ]
+    deps: [data/standardized/icaerus.derval.jsonl, 
+        data/standardized/icaerus.jalogny.jsonl, 
+        data/standardized/icaerus.mauron.jsonl, 
+        data/standardized/icaerus.other.jsonl]
+    outs: [data/standardized/icaerus.all.jsonl]
 
   train-v1:
     cmd: >-
       cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_v1.yaml 
-      --train-data data/sky/Dataset1
+      --cfg cow_detect/train/teo/train_cfg_v1.yaml  --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn/
     deps:
-      - cow_detect/train/teo/train_cfg_v1.yaml
-      - data/sky/Dataset1
+    - cow_detect/train/teo/train_cfg_v1.yaml
+    - data/sky/Dataset1
     outs:
-      - data/training/teo/v1/faster-rcnn/
-
-  train-v11:
-    cmd: >-
-      cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_v11.yaml 
-      --train-data data/sky/Dataset1
-      --save-path data/training/teo/v11/faster-rcnn/
-    deps:
-      - cow_detect/train/teo/train_cfg_v11.yaml
-      - data/sky/Dataset1
-    outs:
-      - data/training/teo/v11/faster-rcnn/
+    - data/training/teo/v1/faster-rcnn/
 
   train-v1-toy:
     cmd: >-
       cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_toy.yaml 
-      --train-data data/sky/Dataset1
+      --cfg cow_detect/train/teo/train_cfg_toy.yaml  --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn-toy/
     deps:
-      - cow_detect/train/teo/train_cfg_toy.yaml
-      - data/sky/Dataset1
+    - cow_detect/train/teo/train_cfg_toy.yaml
+    - data/sky/Dataset1
     outs:
-      - data/training/teo/v1/faster-rcnn-toy/
+    - data/training/teo/v1/faster-rcnn-toy/
 
   eval-v1-sky2:
     # First example of evaluation on small dataset
@@ -111,7 +94,7 @@ stages:
       data/standardized/sky.dataset2.jsonl
       --out data/evaluation/eval-v1-sky2.jsonl
     deps:
-      - cow_detect/eval/evaluate.py
-      - data/training/teo/v1/faster-rcnn/model.pth
-      - data/standardized/sky.dataset2.jsonl
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v1/faster-rcnn/model.pth
+    - data/standardized/sky.dataset2.jsonl
     outs: [data/evaluation/eval-v1-sky2.jsonl]
