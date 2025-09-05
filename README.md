@@ -14,7 +14,7 @@ https://docs.astral.sh/uv/getting-started/installation/
 uv python install
 
 # instala las dependencias del grupo [dev] definidas en pyproject.toml
-uv sync --native-tls --devq
+uv sync --all-extras
 source .venv/bin/activate
 ```
 
@@ -38,14 +38,76 @@ dvc pull  # .venv debe estar activado
 Desde la raiz del repo ejecutar 
 
 ```bash
+# Install torch-train dependencies 
+uv sync --group dev --group torch-train
+```
+
+```bash
 dvc repro -s train-v1
 ```
 
-# TODO: 
+## Ejecución del API
+Previamente haber instalado las dependencias del grupo [dev] definidas en pyproject.toml
 
-- [ ] Revisar custom_collate_fn
-- [ ] Experiment freezing all parameters except final BoxPRedictor head...
+Se debe ejecutar el script run_api.py ubicado en el folder api/.
 
+```bash
+python api/run_api.py
+```
+
+La configuración del endpoint se encuentra en [api/config.py](api/config.py)
+
+La consulta de los endpoints se encuentra en [localhost:8000](http://localhost:8000/docs), de acuerdo a las configuraciones iniciales del endpoint.
+
+## Aplicación Streamlit
+
+Este proyecto incluye una aplicación web Streamlit para cargar imágenes a S3 y visualizar resultados de detección.
+
+### Ejecutar la Aplicación Streamlit
+
+Este proyecto utiliza [Poe the Poet](https://github.com/nat-n/poe-the-poet) para gestionar y ejecutar tareas de forma consistente.
+
+1.  **Instalar dependencias:**
+    Asegúrate de tener todas las dependencias instaladas, con el siguiente comando:
+    
+    ```bash
+    uv sync --all-extras
+    ```
+    
+
+2.  **Configurar credenciales de AWS:**
+    La aplicación necesita acceso a S3. Asegúrate de haber configurado tu perfil de AWS (`aws configure`). La tarea de Poe está configurada para usar el perfil llamado `dvc-user`.
+
+3.  **Ejecutar la aplicación:**
+    Para iniciar la aplicación Streamlit, ejecuta el siguiente comando:
+    
+    ```bash
+    poe dashboard
+    ```
+    
+    Este comando se encargará de establecer la variable de entorno `AWS_PROFILE=dvc-user` y lanzar la aplicación, que estará disponible en `http://localhost:8501`.
+
+### Características
+
+La aplicación tiene dos páginas:
+
+1. **Cargar Imágenes**: Cargar imágenes al bucket S3 `cow-detect-maia` para procesamiento
+   - Configurar finca y sobrevuelo para organización
+   - Carga por lotes de múltiples imágenes
+   - Llama automáticamente al endpoint de procesamiento después de cargas exitosas
+
+2. **Ver Detecciones**: Mostrar imágenes con cuadros delimitadores desde API de detección
+   - Obtener datos de detección desde endpoints API
+   - Visualizar cuadros delimitadores con colores personalizables
+   - Soporte para múltiples formatos JSON
+   - Mostrar puntuaciones de confianza y etiquetas
+
+### Configuración
+
+Antes de usar la función de carga:
+- Configurar credenciales AWS (`aws configure` o variables de entorno)
+idealmente ponerlas en un perfil llamado dvc-user
+- ~~Actualizar el `ENDPOINT_URL` en `pages/1_Upload_Images.py` con su endpoint de procesamiento~~ (Ahora se configura automáticamente)
 
 
 ## Note on BBOX formats:
@@ -62,3 +124,7 @@ Source: https://lohithmunakala.medium.com/bounding-box-formats-for-models-like-y
 
 Usar otras arquitecturas de acá: 
 https://docs.pytorch.org/vision/main/models/faster_rcnn.html
+
+# TODO:
+
+- [ ] Experiment freezing all parameters except final BoxPRedictor head...

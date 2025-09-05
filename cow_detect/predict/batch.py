@@ -211,8 +211,7 @@ def predict_from_path_by_batches(
                     file_out.write(json.dumps(record) + "\n")
 
 
-# %%
-def _interactive_testing__():
+def _interactive_testing():
     # %%
     predict_from_path_by_batches(
         images_path=Path("data/sky/Dataset1"),

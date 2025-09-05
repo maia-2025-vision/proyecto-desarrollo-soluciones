@@ -13,6 +13,10 @@ dependencies = [
     "typer",
     "pydantic",
     "loguru",
+    "streamlit>=1.49.1",
+    "boto3>=1.39.11",
+    "requests>=2.32.5",
+    "pillow>=11.3.0",
 ]
 
 [dependency-groups]
@@ -38,7 +42,9 @@ dev = [
     "ruff",
     "poethepoet",
     "types-PyYAML",
-    "types-tqdm"
+    "types-tqdm",
+    "fastapi>=0.116.1",
+    "mlflow>=3.3.2",
 ]
 
 [build-system]
@@ -70,6 +76,7 @@ select = [
 ]
 ignore = [
     "D100", # Missing docstring in public module
+    "D103", # Missing docstring in public function
     "D104", # Missing docstring in public package
     "D107", # Missing docstring in __init__
     "UP040", # Type alias `X` uses `TypeAlias` annotation instead of the `type` keyword
@@ -119,3 +126,11 @@ cmd="python cow_detect/utils/annotations.py data/sky/Dataset1/ann/"
 [tool.poe.tasks.scan-annots-sky-2]
 help="Test annots parsing over all annotations of Sky Dataset 2"
 cmd="python cow_detect/utils/annotations.py data/sky/Dataset2/ann/"
+
+[tool.poe.tasks.serve]
+help="Start the prediction API service"
+cmd="python api/run_api.py"
+
+[tool.poe.tasks.dashboard]
+help="Start the streamlit dashboard"
+shell="AWS_PROFILE=dvc-user uv run streamlit run streamlit_app.py"
