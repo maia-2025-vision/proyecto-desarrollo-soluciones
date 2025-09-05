@@ -77,7 +77,7 @@ stages:
 
   train-v2-derval:
     cmd: >-
-      cow_detect/train/teo/train_v2.py
+      cow_detect/train/teo/train_v2_std.py
       --cfg cow_detect/train/teo/train_cfg_v2.yaml  
       --train-data data/standardized/icaerus.derval.jsonl
       --valid-data data/standardized/icaerus.other.jsonl
