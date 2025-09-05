@@ -80,7 +80,9 @@ class SkyDataset(Dataset):
         image_pt = self.img_to_tensor(image)
         del image
 
-        boxes, labels = parse_json_annotations_file(annotation_path, self.class_name_to_id)
+        bboxes0, label_strs = parse_json_annotations_file(annotation_path)
+        boxes, labels = filter_bboxes_for_classes(bboxes0, label_strs, self.class_name_to_id)
+        del bboxes0, label_strs
 
         target = {}
 
@@ -99,3 +101,19 @@ class SkyDataset(Dataset):
             image_pt, target = self.transforms(image_pt, target)
 
         return image_pt, target, img_path
+
+
+def filter_bboxes_for_classes(
+    boxes0: list, label_strs: list[str], cls_name_to_id: dict[str, int]
+) -> tuple[list, str]:
+    # Filter bboxes only for classes that are in class_name_to_id
+    boxes: list[list[int]] = []
+    labels: list[int] = []
+    for bbox, class_name in zip(boxes0, label_strs):
+        if class_name not in cls_name_to_id:
+            continue
+        else:
+            boxes.append(bbox)
+            labels.append(cls_name_to_id[class_name])
+
+    return boxes, labels

@@ -75,31 +75,31 @@ def parse_yolo_annotation_file(
 
 
 def parse_json_annotations_file(
-    annotation_path: Path, class_name_to_id: dict[str, int]
-) -> tuple[list[list[int]], list[int]]:
+    annotation_path: Path # , class_name_to_id: dict[str, int]
+) -> tuple[list[list[int]], list[str]]:
     """Parse rectangle type annotations assumed to be in "objects" member of the json document.
 
     Returns a tuple containing:
     - list of boxes, each represented in Pascal VOC format [x_min, y_min, x_max, y_max]
     This is the format expected by fastercnn during training:
     https://docs.pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html
-    - list of labels of type int"""
+    - list of labels of type str (class names)"""
     obj = json.loads(annotation_path.read_text())
 
     annots = obj["objects"]
     ignored_cnts: Counter[str] = Counter()
 
     boxes: list[list[int]] = []
-    labels: list[int] = []
+    labels: list[str] = []
 
     for annot in annots:
         class_name = annot["classTitle"]
-        if class_name not in class_name_to_id:
-            ignored_cnts[class_name] += 1
-            continue
+        # if class_name not in class_name_to_id:
+        #    ignored_cnts[class_name] += 1
+        #    continue
 
-        class_id = class_name_to_id[class_name]
-        labels.append(class_id)
+        # class_id = class_name_to_id[class_name]
+        labels.append(class_name)
 
         assert annot["geometryType"] == "rectangle", f"{annot['geometryType']} != 'rectangle'"
         p_min, p_max = annot["points"]["exterior"]
@@ -117,6 +117,9 @@ def parse_json_annotations_file(
     assert len(labels) == len(boxes), f"{len(labels)} != {len(boxes)}"
 
     return boxes, labels
+
+
+
 
 
 @cli.command()
