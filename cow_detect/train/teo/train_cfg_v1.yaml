@@ -1,7 +1,20 @@
 experiment_name: "faster-rcnn-v1"
 data_root_dir: "data/sky/Dataset1"
 num_epochs: 5
-sort_paths: true
+# sort_paths: false means we will load images
+# in the order produced by data_root_dir.rglob()
+# this might depend on the operating system or
+# the order in which images were saved on disk
+# This also causes some data-leakage between
+# train and validation, since it's very likely
+# that some (most?) validation image have big overlap
+# with train set. This validation metrics
+# will be inflated and unrealistic because of this.
+# So, although this yields a model with a higher
+# IoU, that IoU is not representative of actual
+# model performance on a separate test dataset.
+sort_paths: false
+# sort_paths: true # new versions should set it to true!
 train_fraction: 0.3
 valid_fraction: 0.1
 data_loader:
