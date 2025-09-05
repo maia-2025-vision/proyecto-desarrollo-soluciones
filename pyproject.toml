@@ -24,6 +24,7 @@ torch-train = [
     "pillow>=10",
     "mlflow",
     "transformers>=4.55.4",
+    "torchmetrics>=1.8.2",
 ]
 
 dev = [

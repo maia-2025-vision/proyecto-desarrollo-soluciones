@@ -77,7 +77,13 @@ def parse_yolo_annotation_file(
 def parse_json_annotations_file(
     annotation_path: Path, class_name_to_id: dict[str, int]
 ) -> tuple[list[list[int]], list[int]]:
-    """Parse rectangle type annotations assumed to be in "objects" member of the json document."""
+    """Parse rectangle type annotations assumed to be in "objects" member of the json document.
+
+    Returns a tuple containing:
+    - list of boxes, each represented in Pascal VOC format [x_min, y_min, x_max, y_max]
+    This is the format expected by fastercnn during training:
+    https://docs.pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html
+    - list of labels of type int"""
     obj = json.loads(annotation_path.read_text())
 
     annots = obj["objects"]
