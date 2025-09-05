@@ -18,7 +18,9 @@ class AnnotatedImagesDataset(Dataset):
         std_data_path: Path,
         label_to_id: dict[str, int],
         force_resize: bool = True,
-        limit: None | int = None,
+        limit: int | None = None,
+        limit_fraction: float | int = None,
+        name: str = "<unnamed>",
     ) -> None:
         """A torch dataset that provides images as tensors together with their paths.
 
@@ -30,6 +32,7 @@ class AnnotatedImagesDataset(Dataset):
         """
         self.std_data_path = std_data_path
         self.label_to_id = label_to_id
+        self.name = name
 
         data_lines = self.std_data_path.read_text().splitlines()
         logger.info(f"{len(data_lines)} read from {std_data_path}")
@@ -45,10 +48,15 @@ class AnnotatedImagesDataset(Dataset):
 
         logger.info(f"Ok records: {len(self.records)}")
 
-        if limit is not None:
-            logger.info(f"Limiting evaluation to {limit} records")
-            self.records = self.records[:limit]
+        if limit_fraction is not None:
+            limit = int(math.ceil(len(self.records) * limit_fraction))
+            logger.info(f"Limiting dataset to {limit} records (fraction: {limit_fraction})")
+        elif limit is not None:
+            logger.info(f"Limiting dataset to {limit} records")
+        else:  # do not limit
+            limit = len(self.records)
 
+        self.records = self.records[:limit]
         self.img_to_tensor = torchvision.transforms.ToTensor()
         self.target_size: tuple[int, int] | None = None
         self.force_resize: bool = force_resize
@@ -105,10 +113,15 @@ class AnnotatedImagesDataset(Dataset):
         label_strs: list[str] = [annot.label for annot in annots]
         label_ids: list[int] = [self.label_to_id[lbl] for lbl in label_strs]
 
+        if len(bboxes) > 0:
+            boxes = torch.tensor(bboxes, dtype=torch.float32)
+        else:  # make sure boxes has dim=2 even if first dimension is zero..
+            boxes = torch.zeros((0, 4), dtype=torch.float32)
+
         return {
             "image_path": img_path,
             "image_pt": image_tensor,
-            "boxes": torch.tensor(bboxes, dtype=torch.float32),
+            "boxes": boxes,
             "label_strs": label_strs,
             "labels": torch.tensor(label_ids, dtype=torch.long),
         }

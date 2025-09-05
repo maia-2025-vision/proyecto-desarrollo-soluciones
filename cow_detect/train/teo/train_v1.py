@@ -88,6 +88,7 @@ class TrainCfg(BaseModel):
     num_epochs: int
     optimizer: OptimizerParams
     device: str = "cpu"
+    num_classes: int = 2
 
 
 class Trainer:
@@ -195,6 +196,22 @@ class Trainer:
         mlflow.log_metric("avg_valid_score", float(avg_valid_score), step=epoch)
         mlflow.log_metric("avg_valid_iou", float(avg_valid_iou), step=epoch)
         logger.info(f"Epoch {epoch}: VALIDATION : {avg_valid_score=:.4}, {avg_valid_iou=:.4f}")
+
+
+def save_model_and_version(model: nn.Module, train_cfg: TrainCfg, git_revision: str, save_path: Path ) -> None:
+    save_path.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), save_path / "model.pth")
+    (save_path / "train-config.yaml").write_text(yaml.dump(train_cfg))
+    (save_path / "versioning.txt").write_text(
+        json.dumps(
+            {
+                "git_revision": git_revision,
+                "cfg_hash": get_cfg_hash(train_cfg.model_dump_json()),
+            }
+        )
+    )
+    logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
+
 
 
 @cli.command()
@@ -307,18 +324,7 @@ def train_faster_rcnn(
 
     # Save the fine-tuned model
     if save_path is not None:
-        save_path.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), save_path / "model.pth")
-        (save_path / "train-config.yaml").write_text(yaml.dump(train_cfg))
-        (save_path / "versioning.txt").write_text(
-            json.dumps(
-                {
-                    "git_revision": git_revision,
-                    "cfg_hash": get_cfg_hash(train_cfg.model_dump_json()),
-                }
-            )
-        )
-        logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
+        save_model_and_version(model, train_cfg=train_cfg, git_revision=git_revision, save_path=save_path)
 
 
 if __name__ == "__main__":

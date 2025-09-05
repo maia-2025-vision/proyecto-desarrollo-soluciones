@@ -7,6 +7,7 @@ class DataLoaderParams(BaseModel):
     batch_size: int
     data_shuffle: bool
     num_workers: int
+    valid_batch_size: int = 2
 
 
 class OptimizerParams(BaseModel):
@@ -15,3 +16,4 @@ class OptimizerParams(BaseModel):
     learning_rate: float
     momentum: float
     weight_decay: float
+    optimizer_class: str = "SGD"
