@@ -56,9 +56,13 @@ def parse_yolo_annotation_line(
 
 def parse_yolo_annotation_file(
     annotation_path: Path, img_width: int, img_height: int
-) -> tuple[list[list[int]], list[int]]:
-    """Parse a plain text file consisting of yolo formatted annotations."""
-    boxes: list[list[int]] = []  # [x_min, y_min, x_max, y_max] formatted boxes
+) -> tuple[list[list[float]], list[int]]:
+    """Parse a plain text file consisting of yolo formatted annotations.
+
+    Return two parallel lists of bboxes and class ids.
+    Each bbox will have format [x_min, y_min, x_max, y_max]
+    """
+    boxes: list[list[float]] = []
     labels: list[int] = []  # class-id for each box
 
     with annotation_path.open("rt") as f:
@@ -74,7 +78,7 @@ def parse_yolo_annotation_file(
 
 def parse_json_annotations_file(
     annotation_path: Path,  # , class_name_to_id: dict[str, int]
-) -> tuple[list[list[int]], list[str]]:
+) -> tuple[list[list[float]], list[str]]:
     """Parse rectangle type annotations assumed to be in "objects" member of the json document.
 
     Returns a tuple containing:
@@ -88,16 +92,11 @@ def parse_json_annotations_file(
     annots = obj["objects"]
     ignored_cnts: Counter[str] = Counter()
 
-    boxes: list[list[int]] = []
+    boxes: list[list[float]] = []
     labels: list[str] = []
 
     for annot in annots:
         class_name = annot["classTitle"]
-        # if class_name not in class_name_to_id:
-        #    ignored_cnts[class_name] += 1
-        #    continue
-
-        # class_id = class_name_to_id[class_name]
         labels.append(class_name)
 
         assert annot["geometryType"] == "rectangle", f"{annot['geometryType']} != 'rectangle'"
@@ -108,7 +107,7 @@ def parse_json_annotations_file(
         assert x_min < x_max, f"it's not the case that {x_min} < {x_max}"
         assert y_min < y_max, f"it's not the case that {y_min} < {y_max}"
 
-        boxes.append([x_min, y_min, x_max, y_max])
+        boxes.append([float(x_min), float(y_min), float(x_max), float(y_max)])
 
     if len(ignored_cnts) > 0:
         logger.warning(f"{annotation_path!s} - ignored: {ignored_cnts}")
@@ -124,13 +123,13 @@ def scan_json_annots(annots_dir: Path) -> None:
     import tqdm
 
     annot_files = list(annots_dir.glob("*.json"))
-    class_name_to_id: dict[str, int] = {"cattle": 0}
+    # class_name_to_id: dict[str, int] = {"cattle": 0}
 
     n_files = 0
     n_boxes = 0
     n_labels = 0
     for file in tqdm.tqdm(annot_files):
-        boxes, labels = parse_json_annotations_file(file, class_name_to_id)
+        boxes, labels = parse_json_annotations_file(file)
         n_boxes += len(boxes)
         n_labels += len(labels)
         n_files += 1

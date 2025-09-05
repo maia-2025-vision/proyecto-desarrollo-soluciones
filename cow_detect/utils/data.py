@@ -1,5 +1,7 @@
 import torch
 
+NaN = float("nan")
+
 
 def make_jsonifiable(record: dict[str, torch.Tensor]) -> dict[str, list]:
     """Convert values of input dict to list.
@@ -7,6 +9,29 @@ def make_jsonifiable(record: dict[str, torch.Tensor]) -> dict[str, list]:
     Resulting dict can be passed through json.dumps()
     """
     return {k: v.tolist() for k, v in record.items()}
+
+
+def _process_singleton(x: torch.Tensor, *, negative_to_nan: bool) -> float:
+    if not x.numel() == 1:
+        raise ValueError(f"x={x}, but expected single element tensor")
+
+    value = x.item()
+    if value < 0 and negative_to_nan:
+        return NaN
+    else:
+        return value
+
+
+def make_jsonifiable_singletons(
+    record: dict[str, torch.Tensor], *, negative_to_nan: bool
+) -> dict[str, float]:
+    """Convert values of input dict to single floats.
+
+    It assumes they are all tensors with exactly one element, otherwise will raise an error.
+
+    Resulting dict can be passed through json.dumps()
+    """
+    return {k: _process_singleton(x, negative_to_nan=negative_to_nan) for k, x in record.items()}
 
 
 def custom_collate_dicts(batch: list[dict[str, torch.Tensor | str]]) -> dict[str, list]:
@@ -44,8 +69,8 @@ def zip_dict(a_dict_of_lists: dict[str, list]) -> list[dict]:
 
 
 def filter_bboxes_for_classes(
-    boxes0: list[list[int]], label_strs: list[str], cls_name_to_id: dict[str, int]
-) -> tuple[list[list[int]], list[str]]:
+    boxes0: list[list], label_strs: list[str], cls_name_to_id: dict[str, int]
+) -> tuple[list[list], list[int]]:
     """Filter bboxes and their corresponding labels.
 
     Keep only boxes corresponding to labels that are keys in cls_name_to_id.

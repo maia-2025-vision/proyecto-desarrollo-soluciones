@@ -2,7 +2,7 @@ import math
 from pathlib import Path
 
 import torch
-import torchvision.transforms
+import torchvision.transforms  # type: ignore[import-untyped]
 from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset
@@ -50,8 +50,8 @@ class AnnotatedImagesDataset(Dataset):
             self.records = self.records[:limit]
 
         self.img_to_tensor = torchvision.transforms.ToTensor()
-        self.target_size = None
-        self.force_resize = force_resize
+        self.target_size: tuple[int, int] | None = None
+        self.force_resize: bool = force_resize
 
     def __len__(self) -> int:
         """Get the length of the dataset."""
@@ -61,7 +61,7 @@ class AnnotatedImagesDataset(Dataset):
         """Get the number of batches per epoch."""
         return int(math.ceil(len(self.records) / batch_size))
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, Path]:
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor | Path | list[str]]:
         """Get the i-th image from this dataset as torch tensor along with its path."""
         img_path = self.records[idx].image.path
 
@@ -97,7 +97,10 @@ class AnnotatedImagesDataset(Dataset):
         del image
 
         annot_info: AnnotationsFileInfo = self.records[idx].annotations
-        annots: list[Annot] = annot_info.annots
+        annots: list[Annot] | None = annot_info.annots
+        assert (
+            annots is not None
+        ), f"annots is not populated in annot_info: {annot_info.model_dump_json()}"
         bboxes: list[list[float]] = [annot.coords for annot in annots]
         label_strs: list[str] = [annot.label for annot in annots]
         label_ids: list[int] = [self.label_to_id[lbl] for lbl in label_strs]

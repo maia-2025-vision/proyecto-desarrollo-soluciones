@@ -1,7 +1,9 @@
+#!/usr/bin/env python
 import json
 import time
 from importlib import reload
 from pathlib import Path
+from typing import TypedDict
 
 import torch
 import tqdm
@@ -13,7 +15,12 @@ from torchmetrics.functional.detection import mean_average_precision
 
 import cow_detect.datasets.std as ds
 from cow_detect.predict.batch import get_prediction_model
-from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable, zip_dict
+from cow_detect.utils.data import (
+    custom_collate_dicts,
+    make_jsonifiable,
+    make_jsonifiable_singletons,
+    zip_dict,
+)
 
 reload(ds)
 
@@ -25,9 +32,16 @@ DEFAULT_LABEL_TO_ID = {"cow": 1, "cattle": 1, "calf": 1}
 cli = typer.Typer()
 
 
-def eval_one_batch(
-    batch: dict[str, list[torch.Tensor | str | Path]], model: nn.Module
-) -> list[dict]:
+class EvaluatedBatch(TypedDict):
+    """Parallel lists of stuff, each with one element per input image."""
+
+    image_pt: list[torch.Tensor]  # each element is an image as tensor
+    boxes: list[
+        torch.Tensor
+    ]  # each element has all target/true boxes in one image, i.e. shape [n_boxes, 4]
+
+
+def eval_one_batch(batch: EvaluatedBatch, model: nn.Module) -> list[dict]:
     """Run evaluation on one batch of data."""
     images_batch: list[torch.Tensor] = batch["image_pt"]
 
@@ -36,7 +50,7 @@ def eval_one_batch(
     pred_elapsed = time.perf_counter() - t0
 
     assert len(preds_batch) == len(images_batch), f"{len(preds_batch)} != {len(images_batch)}"
-    targets: list[dict] = zip_dict(batch)
+    targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
     batch_size = len(preds_batch)
 
     output_records = []
@@ -51,6 +65,7 @@ def eval_one_batch(
             box_format="xyxy",
             iou_type="bbox",
         )
+        assert isinstance(mapr_metrics, dict)
         # print("precision:", mapr_metrics["map"])  # , " recall:", metrics["mar"])
 
         output_record = {
@@ -59,7 +74,7 @@ def eval_one_batch(
             "true_count": len(true_bboxes),
             # "counts_by_label": counts_by_label,
             "prediction": make_jsonifiable(prediction),
-            "mapr_metrics": make_jsonifiable(mapr_metrics),
+            "mapr_metrics": make_jsonifiable_singletons(mapr_metrics, negative_to_nan=True),
             "prediction_time_secs": pred_elapsed / batch_size,
         }
 
@@ -70,13 +85,15 @@ def eval_one_batch(
 
 @cli.command()
 def eval_from_std_dataset(
+    model_weights: Path = typer.Argument(help="Path to model weights."),
     std_data_path: Path = typer.Argument(
         help="standardized data set containing image paths and annotations "
         "on which we will run evaluation"
     ),
     model_type: str = "teo/v1",
-    model_weights: Path = typer.Option(..., help="Path to model weights."),
-    output_path: Path = typer.Option(..., help="path of output file, should have .jsonl extension"),
+    output_path: Path = typer.Option(
+        ..., "--out", help="path of output file, should have .jsonl extension"
+    ),
     batch_size: int = 2,
     label_to_id_json: str | None = typer.Option(
         None,
@@ -108,8 +125,7 @@ def eval_from_std_dataset(
                 file_out.write(json.dumps(record) + "\n")
 
 
-# %%
-def _interactive_testing():
+def _interactive_testing() -> None:
     # %%
     eval_from_std_dataset(
         # std_data_path=Path("data/standardized/sky.dataset2.jsonl"),
@@ -137,4 +153,5 @@ def _interactive_testing():
     # %%
 
 
-# %%
+if __name__ == "__main__":
+    cli()

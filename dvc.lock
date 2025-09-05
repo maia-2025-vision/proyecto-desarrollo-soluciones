@@ -95,13 +95,14 @@ stages:
       md5: 9064a73cbaed6bcf0490c4305843c019
       size: 71877
   std-icaerus-jalogny:
-    cmd: python cow_detect/utils/standardize.py data/icaerus/Jalogny --kind 
-      icaerus --out data/standardized/icaerus.jalogny.jsonl
+    cmd: cow_detect/utils/standardize.py data/icaerus/Jalogny --kind icaerus 
+      --out data/standardized/icaerus.jalogny.jsonl
     deps:
     - path: cow_detect/utils/standardize.py
       hash: md5
-      md5: be7f389b1dd9b21f6ffb92d0a84a4d6c
-      size: 9168
+      md5: f1bc0f476f535f203c7e6dbf735b9a6b
+      size: 11153
+      isexec: true
     - path: data/icaerus/Jalogny
       hash: md5
       md5: 16450e1a1b4a72a7b24fe858360a7a80.dir
@@ -110,8 +111,8 @@ stages:
     outs:
     - path: data/standardized/icaerus.jalogny.jsonl
       hash: md5
-      md5: 389b8ee6dd80e7424c7498100a30a8f2
-      size: 327208
+      md5: da05ce1bbfdf24bf99b0554713d44d03
+      size: 327079
   std-icaerus-mauron:
     cmd: python cow_detect/utils/standardize.py data/icaerus/Mauron --kind 
       icaerus --out data/standardized/icaerus.mauron.jsonl
@@ -148,3 +149,26 @@ stages:
       hash: md5
       md5: 6340ac434750fbbcebad3ed50807ce56
       size: 38867
+  eval-v1-sky2:
+    cmd: cow_detect/eval/evaluate.py  data/training/teo/v1/faster-rcnn/model.pth
+      data/standardized/sky.dataset2.jsonl --out 
+      data/evaluation/eval-v1-sky2.jsonl
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: 845d5b541f547753c2864c243e2fcfa3
+      size: 5662
+      isexec: true
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    - path: data/training/teo/v1/faster-rcnn/model.pth
+      hash: md5
+      md5: c4a1f407de6f5891ed3d12887b8f05d8
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v1-sky2.jsonl
+      hash: md5
+      md5: 15840fba87e2836af774a746e154625e
+      size: 20850

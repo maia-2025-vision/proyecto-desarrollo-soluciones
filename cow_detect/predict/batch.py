@@ -5,9 +5,7 @@ from collections import Counter
 from pathlib import Path
 
 import torch
-import torchvision
-
-# from cow_detect.utils.debug import summarize
+import torchvision  # type: ignore[import-untyped]
 import tqdm
 from loguru import logger
 from PIL import Image
@@ -15,7 +13,6 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 from cow_detect.utils.data import make_jsonifiable
-from cow_detect.utils.debug import summarize
 
 
 class ImagesPredictDataset(Dataset):
@@ -55,8 +52,8 @@ class ImagesPredictDataset(Dataset):
             self.image_paths = self.image_paths[:limit]
 
         self.img_to_tensor = torchvision.transforms.ToTensor()
-        self.target_size = None
-        self.force_resize = force_resize
+        self.target_size: tuple[int, int] | None = None
+        self.force_resize: bool = force_resize
 
     def __len__(self) -> int:
         """Get the length of the dataset."""
@@ -120,6 +117,7 @@ def get_prediction_model(weights_path: Path, model_type: str = "teo/v1") -> nn.M
         model = get_model(num_classes=2)
         state_dict = torch.load(weights_path)
         model.load_state_dict(state_dict)
+        assert isinstance(model, nn.Module)
         return model
     else:
         raise NotImplementedError(f"model_type={model_type} not implemented yet")
@@ -132,7 +130,7 @@ def custom_collate_fun(batch: list[tuple]) -> tuple[list, ...]:
     custom_collate_fun([(1, "a", tensor1), (3, "b", tensor2)])
     == ([1, 2], ["a", "b"], [tensor1, tensor2])
     """
-    return tuple(zip(*batch, strict=True))
+    return tuple(zip(*batch, strict=True))  # type: ignore[arg-type]  #  mypy false positive, this works
 
 
 def predict_one_batch(
@@ -211,7 +209,7 @@ def predict_from_path_by_batches(
                     file_out.write(json.dumps(record) + "\n")
 
 
-def _interactive_testing():
+def _interactive_testing() -> None:
     # %%
     predict_from_path_by_batches(
         images_path=Path("data/sky/Dataset1"),
