@@ -19,7 +19,7 @@ class AnnotatedImagesDataset(Dataset):
         label_to_id: dict[str, int],
         force_resize: bool = True,
         limit: int | None = None,
-        limit_fraction: float | int = None,
+        limit_fraction: float | None = None,
         name: str = "<unnamed>",
     ) -> None:
         """A torch dataset that provides images as tensors together with their paths.

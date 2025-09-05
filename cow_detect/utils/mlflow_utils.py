@@ -2,8 +2,9 @@ from hashlib import md5
 from pathlib import Path
 
 import mlflow
+from loguru import logger
 
-from cow_detect.utils.config import OptimizerParams, DataLoaderParams
+from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 
 
 def log_params_v1(
@@ -17,7 +18,7 @@ def log_params_v1(
     model_type: type,
     opt_params: OptimizerParams,
     dl_params: DataLoaderParams,
-):
+) -> None:
     cfg_md5 = md5(train_cfg_path.read_bytes()).hexdigest()
 
     mlflow.log_param("data_set", str(train_data_path))
@@ -35,3 +36,23 @@ def log_params_v1(
     mlflow.log_param("batch_size", dl_params.batch_size)
     mlflow.log_param("num_workers", dl_params.num_workers)
     mlflow.log_param("device", str(device))
+
+
+def log_mapr_metrics(
+    mapr_metrics: dict[str, float],
+    prefix: str,
+    max_detect_thresholds: list[int],
+) -> dict[str, float]:
+    logged = {}
+    for metric in ["map", "map_50", "map_75", "map_medium", "mar_medium"]:
+        value = mapr_metrics[metric]
+        mlflow.log_param(f"{prefix}_{metric}", value)
+        logged[metric] = value
+
+    for mdt in max_detect_thresholds:
+        key = f"mar_{mdt}"
+        value = mapr_metrics[key]
+        mlflow.log_param(f"{prefix}_{metric}", value)
+        logged[key] = value
+
+    return logged

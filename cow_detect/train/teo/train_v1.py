@@ -5,6 +5,7 @@ import os
 from hashlib import md5
 from pathlib import Path
 from pprint import pprint
+from typing import Annotated
 
 import mlflow
 import numpy as np
@@ -77,11 +78,14 @@ class TrainCfg(BaseModel):
     """Parameters fort training."""
 
     experiment_name: str
-    sort_paths: bool = Field(
-        True,
-        description="whether to sort paths from input dataset before splitting,"
-        "default true for greater reproducibility",
-    )
+    sort_paths: Annotated[
+        bool,
+        Field(
+            description="whether to sort paths from input dataset before splitting,"
+            "default true for greater reproducibility",
+        ),
+    ] = True
+
     train_fraction: float
     valid_fraction: float
     data_loader: DataLoaderParams
@@ -89,6 +93,13 @@ class TrainCfg(BaseModel):
     optimizer: OptimizerParams
     device: str = "cpu"
     num_classes: int = 2
+    max_detection_thresholds: Annotated[
+        list[int],
+        Field(
+            default_factory=lambda: [3, 5, 10],
+            description="thresholds used for calculating mAR metrics",
+        ),
+    ]
 
 
 class Trainer:
@@ -198,7 +209,9 @@ class Trainer:
         logger.info(f"Epoch {epoch}: VALIDATION : {avg_valid_score=:.4}, {avg_valid_iou=:.4f}")
 
 
-def save_model_and_version(model: nn.Module, train_cfg: TrainCfg, git_revision: str, save_path: Path ) -> None:
+def save_model_and_version(
+    model: nn.Module, train_cfg: TrainCfg, git_revision: str, save_path: Path
+) -> None:
     save_path.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), save_path / "model.pth")
     (save_path / "train-config.yaml").write_text(yaml.dump(train_cfg))
@@ -211,7 +224,6 @@ def save_model_and_version(model: nn.Module, train_cfg: TrainCfg, git_revision: 
         )
     )
     logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
-
 
 
 @cli.command()
@@ -324,7 +336,9 @@ def train_faster_rcnn(
 
     # Save the fine-tuned model
     if save_path is not None:
-        save_model_and_version(model, train_cfg=train_cfg, git_revision=git_revision, save_path=save_path)
+        save_model_and_version(
+            model, train_cfg=train_cfg, git_revision=git_revision, save_path=save_path
+        )
 
 
 if __name__ == "__main__":
