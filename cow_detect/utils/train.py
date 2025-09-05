@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 def train_validation_split(
     imgs_dir: Path,
     *,
+    sort_paths: bool = True,
     valid_fraction: float,
     train_fraction: float | None = None,
     ext: str = "JPG",
@@ -34,6 +35,9 @@ def train_validation_split(
     :return: (list of train paths, list of valid paths)
     """
     all_imgs = list(imgs_dir.rglob(f"*.{ext}"))
+    if sort_paths:
+        logger.info(f"Sorting {len(all_imgs)} images from {imgs_dir!s}")
+        all_imgs = sorted(all_imgs, key=lambda x: x.name)
     n_imgs = len(all_imgs)
     assert (
         0.0 < valid_fraction < 1.0

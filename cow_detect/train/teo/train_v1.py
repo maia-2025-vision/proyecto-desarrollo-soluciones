@@ -1,6 +1,7 @@
 import gc
 import json
 import os
+from hashlib import md5
 from pathlib import Path
 from pprint import pprint
 
@@ -12,7 +13,7 @@ import tqdm
 import typer
 import yaml
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision.models.detection.faster_rcnn import (  # type: ignore[import-untyped]
@@ -22,7 +23,7 @@ from torchvision.models.detection.faster_rcnn import (  # type: ignore[import-un
 )
 from typer import Typer
 
-from cow_detect.train.teo.ds_v1 import SkyDataset
+from cow_detect.datasets.sky_v1 import SkyDataset
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 from cow_detect.utils.metrics import calculate_iou
 from cow_detect.utils.train import get_num_batches, train_validation_split
@@ -75,6 +76,11 @@ class TrainCfg(BaseModel):
     """Parameters fort training."""
 
     experiment_name: str
+    sort_paths: bool = Field(
+        True,
+        description="whether to sort paths from input dataset before splitting,"
+        "default true for greater reproducibility",
+    )
     train_fraction: float
     valid_fraction: float
     data_loader: DataLoaderParams
@@ -211,6 +217,7 @@ def train_faster_rcnn(
 
     train_img_paths, valid_img_paths = train_validation_split(
         imgs_dir=train_data_path / "img",
+        sort_paths=train_cfg.sort_paths,
         train_fraction=train_cfg.train_fraction,
         valid_fraction=train_cfg.valid_fraction,
     )
@@ -270,11 +277,14 @@ def train_faster_rcnn(
 
     git_revision = get_git_revision_hash()
     experiment = mlflow.set_experiment(train_cfg.experiment_name)
+    cfg_md5 = md5(train_cfg_path.read_bytes()).hexdigest()
 
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         mlflow.log_param("data_set", str(train_data_path))
         mlflow.log_param("git_revision_12", git_revision[:12])
-        mlflow.log_param("cfg_hash", get_cfg_hash(train_cfg.model_dump_json()))
+        mlflow.log_param("cfg_md5", cfg_md5)
+        mlflow.log_param("cfg_path", str(train_cfg_path))
+        mlflow.log_param("cfg_full", str(train_cfg_path.read_text()))
         mlflow.log_param("model_class", type(model).__name__)
         mlflow.log_param("num_epochs", num_epochs)
         mlflow.log_param("optimizer_class", type(optimizer).__name__)

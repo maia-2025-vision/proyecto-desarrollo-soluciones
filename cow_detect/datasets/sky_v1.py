@@ -11,6 +11,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from cow_detect.utils.annotations import parse_json_annotations_file
+from cow_detect.utils.data import filter_bboxes_for_classes
 
 # Type produced by a detection model in train mode
 TargetType: TypeAlias = dict[str, torch.Tensor]
@@ -31,11 +32,14 @@ class SkyDataset(Dataset):
         self.name = name
         self.root_dir = root_dir
         self.transforms = transforms
-        # self.image_dir = root_dir / img_subdir
         self.annotation_dir = root_dir / annot_subdir
 
         # all_paths = list(self.image_dir.glob(f"*.{ext}"))
         logger.info(f"dataset: {self.name} - image_paths has : {len(image_paths)}")
+        fnames = [path.name for path in image_paths]
+        fnames_first5 = " ".join(fnames[0:5])
+        fnames_last5 = " ".join(fnames[-5:])
+        logger.info(f"dataset: {self.name} - fnames : [{fnames_first5}...{fnames_last5}]")
 
         broken_imgs_file = root_dir / "broken-imgs.txt"
         if broken_imgs_file.exists():
@@ -77,7 +81,9 @@ class SkyDataset(Dataset):
         image_pt = self.img_to_tensor(image)
         del image
 
-        boxes, labels = parse_json_annotations_file(annotation_path, self.class_name_to_id)
+        bboxes0, label_strs = parse_json_annotations_file(annotation_path)
+        boxes, labels = filter_bboxes_for_classes(bboxes0, label_strs, self.class_name_to_id)
+        del bboxes0, label_strs
 
         target = {}
 
