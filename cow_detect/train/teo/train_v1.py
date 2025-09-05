@@ -22,7 +22,7 @@ from torchvision.models.detection.faster_rcnn import (  # type: ignore[import-un
 )
 from typer import Typer
 
-from cow_detect.train.teo.ds_v1 import SkyDataset
+from cow_detect.datasets.sky_v1 import SkyDataset
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 from cow_detect.utils.metrics import calculate_iou
 from cow_detect.utils.train import get_num_batches, train_validation_split

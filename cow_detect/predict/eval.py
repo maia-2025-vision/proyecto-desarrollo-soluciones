@@ -11,11 +11,9 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchmetrics.functional.detection import mean_average_precision
 
-import cow_detect.train.data.std_ds as ds
+import cow_detect.datasets.std as ds
 from cow_detect.predict.batch import get_prediction_model
 from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable, zip_dict
-from cow_detect.utils.debug import summarize
-from cow_detect.utils.metrics import calculate_iou
 
 reload(ds)
 

@@ -41,3 +41,24 @@ def zip_dict(a_dict_of_lists: dict[str, list]) -> list[dict]:
     keys = list(a_dict_of_lists.keys())
     n = len(a_dict_of_lists[keys[0]])
     return [{k: a_dict_of_lists[k][i] for k in keys} for i in range(n)]
+
+
+def filter_bboxes_for_classes(
+    boxes0: list[list[int]], label_strs: list[str], cls_name_to_id: dict[str, int]
+) -> tuple[list[list[int]], list[str]]:
+    """Filter bboxes and their corresponding labels.
+
+    Keep only boxes corresponding to labels that are keys in cls_name_to_id.
+    Also map string labels to integer label_ids
+    """
+    # Filter bboxes only for classes that are in class_name_to_id
+    boxes: list[list[int]] = []
+    labels: list[int] = []
+    for bbox, class_name in zip(boxes0, label_strs, strict=False):
+        if class_name not in cls_name_to_id:
+            continue
+        else:
+            boxes.append(bbox)
+            labels.append(cls_name_to_id[class_name])
+
+    return boxes, labels

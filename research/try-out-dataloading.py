@@ -15,7 +15,7 @@ def _():
 @app.cell
 def _(Path):
 
-    from cow_detect.train.teo.ds_v1 import SkyDataset
+    from cow_detect.datasets.sky_v1 import SkyDataset
     from cow_detect.utils.debug import summarize
 
     # help(SkyDataset)

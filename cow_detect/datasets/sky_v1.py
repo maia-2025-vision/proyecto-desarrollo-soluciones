@@ -11,6 +11,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from cow_detect.utils.annotations import parse_json_annotations_file
+from cow_detect.utils.data import filter_bboxes_for_classes
 
 # Type produced by a detection model in train mode
 TargetType: TypeAlias = dict[str, torch.Tensor]
@@ -101,23 +102,3 @@ class SkyDataset(Dataset):
             image_pt, target = self.transforms(image_pt, target)
 
         return image_pt, target, img_path
-
-
-def filter_bboxes_for_classes(
-    boxes0: list, label_strs: list[str], cls_name_to_id: dict[str, int]
-) -> tuple[list[list[int]], list[str]]:
-    """Filter bboxes and their corresponding labels.
-
-    Keep only boxes corresponding to labels that are keys in cls_name_to_id.
-    """
-    # Filter bboxes only for classes that are in class_name_to_id
-    boxes: list[list[int]] = []
-    labels: list[int] = []
-    for bbox, class_name in zip(boxes0, label_strs, strict=False):
-        if class_name not in cls_name_to_id:
-            continue
-        else:
-            boxes.append(bbox)
-            labels.append(cls_name_to_id[class_name])
-
-    return boxes, labels
