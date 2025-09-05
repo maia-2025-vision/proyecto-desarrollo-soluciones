@@ -34,7 +34,7 @@ class BBox(BaseModel):
     coords: list[float] = Field(
         description="Bbox coordinates in Pascal VOC format [x_min, y_min, x_max, y_max],"
        "where 0 <= x_min < x_max <= image.width and 0 <= y_min < y_max <= image.height"
-      "could be ints of floats"
+       "could be ints of floats"
     )
     tags: dict[str, object] = Field(description="an arbitrary dictionary of tags keyed by name")
 
