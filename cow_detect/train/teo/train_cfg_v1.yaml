@@ -1,14 +1,13 @@
 experiment_name: "faster-rcnn-v1"
 data_root_dir: "data/sky/Dataset1"
-num_epochs: 3
-sort_paths: false
+num_epochs: 5
+sort_paths: true
 train_fraction: 0.3
 valid_fraction: 0.1
 data_loader:
   batch_size: 2
   data_shuffle: true
-
-  num_workers: 1
+  num_workers: 0
 optimizer:
   learning_rate: 0.005
   momentum: 0.9

@@ -12,12 +12,12 @@ cli = Typer()
 class BboxMinMax(BaseModel):
     """A bounding box defined by a top-left corner and a bottom-right corner."""
 
-    x_min: int
-    y_min: int
-    x_max: int
-    y_max: int
+    x_min: float
+    y_min: float
+    x_max: float
+    y_max: float
 
-    def as_list(self) -> list[int]:
+    def as_list(self) -> list[float]:
         """Convert myself to a list."""
         return [self.x_min, self.y_min, self.x_max, self.y_max]
 
@@ -46,9 +46,7 @@ def parse_yolo_annotation_line(
         x_max = x_center + bbox_width / 2
         y_max = y_center + bbox_height / 2
 
-        return int(class_id), BboxMinMax(
-            x_min=int(x_min), y_min=int(y_min), x_max=int(x_max), y_max=int(y_max)
-        )
+        return int(class_id), BboxMinMax(x_min=x_min, y_min=y_min, x_max=x_max, y_max=y_max)
     else:
         raise ValueError(
             f"Expected line to have 5 pieces but has {len(parts)},"
@@ -75,7 +73,7 @@ def parse_yolo_annotation_file(
 
 
 def parse_json_annotations_file(
-    annotation_path: Path # , class_name_to_id: dict[str, int]
+    annotation_path: Path,  # , class_name_to_id: dict[str, int]
 ) -> tuple[list[list[int]], list[str]]:
     """Parse rectangle type annotations assumed to be in "objects" member of the json document.
 
@@ -83,7 +81,8 @@ def parse_json_annotations_file(
     - list of boxes, each represented in Pascal VOC format [x_min, y_min, x_max, y_max]
     This is the format expected by fastercnn during training:
     https://docs.pytorch.org/vision/main/models/generated/torchvision.models.detection.fasterrcnn_resnet50_fpn.html
-    - list of labels of type str (class names)"""
+    - list of labels of type str (class names)
+    """
     obj = json.loads(annotation_path.read_text())
 
     annots = obj["objects"]
@@ -117,9 +116,6 @@ def parse_json_annotations_file(
     assert len(labels) == len(boxes), f"{len(labels)} != {len(boxes)}"
 
     return boxes, labels
-
-
-
 
 
 @cli.command()

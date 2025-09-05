@@ -105,11 +105,15 @@ class SkyDataset(Dataset):
 
 def filter_bboxes_for_classes(
     boxes0: list, label_strs: list[str], cls_name_to_id: dict[str, int]
-) -> tuple[list, str]:
+) -> tuple[list[list[int]], list[str]]:
+    """Filter bboxes and their corresponding labels.
+
+    Keep only boxes corresponding to labels that are keys in cls_name_to_id.
+    """
     # Filter bboxes only for classes that are in class_name_to_id
     boxes: list[list[int]] = []
     labels: list[int] = []
-    for bbox, class_name in zip(boxes0, label_strs):
+    for bbox, class_name in zip(boxes0, label_strs, strict=False):
         if class_name not in cls_name_to_id:
             continue
         else:

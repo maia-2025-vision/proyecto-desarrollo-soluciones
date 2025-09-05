@@ -40,3 +40,111 @@ stages:
       md5: 95f1643c0833b3d80e1a44ac1dd9b97d.dir
       size: 165705362
       nfiles: 3
+  std-sky-ds1:
+    cmd: python cow_detect/utils/standardize.py data/sky/Dataset1 --kind sky 
+      --out data/standardized/sky.dataset1.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: 970f45a8641d002ff64aa2e3038a7f25
+      size: 8305
+    - path: data/sky/Dataset1
+      hash: md5
+      md5: b92f3590e07a3f9a6b62f17dde029e18.dir
+      size: 3447187507
+      nfiles: 1314
+    outs:
+    - path: data/standardized/sky.dataset1.jsonl
+      hash: md5
+      md5: 314f57c2459eb37ce238aec6b38cb0ab
+      size: 350340
+  std-sky-ds2:
+    cmd: python cow_detect/utils/standardize.py data/sky/Dataset2 --kind sky 
+      --out data/standardized/sky.dataset2.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: 970f45a8641d002ff64aa2e3038a7f25
+      size: 8305
+    - path: data/sky/Dataset2
+      hash: md5
+      md5: 9df096af73b668307c557a3fb1e7439d.dir
+      size: 77288760
+      nfiles: 29
+    outs:
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+  std-icaerus-derval:
+    cmd: python cow_detect/utils/standardize.py data/icaerus/Derval --kind 
+      icaerus --out data/standardized/icaerus.derval.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: 970f45a8641d002ff64aa2e3038a7f25
+      size: 8305
+    - path: data/icaerus/Derval
+      hash: md5
+      md5: 9b4d5d5f4b6349274aa373c18c3a9f37.dir
+      size: 1050560500
+      nfiles: 379
+    outs:
+    - path: data/standardized/icaerus.derval.jsonl
+      hash: md5
+      md5: 9064a73cbaed6bcf0490c4305843c019
+      size: 71877
+  std-icaerus-jalogny:
+    cmd: python cow_detect/utils/standardize.py data/icaerus/Jalogny --kind 
+      icaerus --out data/standardized/icaerus.jalogny.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: be7f389b1dd9b21f6ffb92d0a84a4d6c
+      size: 9168
+    - path: data/icaerus/Jalogny
+      hash: md5
+      md5: 16450e1a1b4a72a7b24fe858360a7a80.dir
+      size: 6913811352
+      nfiles: 1453
+    outs:
+    - path: data/standardized/icaerus.jalogny.jsonl
+      hash: md5
+      md5: 389b8ee6dd80e7424c7498100a30a8f2
+      size: 327208
+  std-icaerus-mauron:
+    cmd: python cow_detect/utils/standardize.py data/icaerus/Mauron --kind 
+      icaerus --out data/standardized/icaerus.mauron.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: be7f389b1dd9b21f6ffb92d0a84a4d6c
+      size: 9168
+    - path: data/icaerus/Mauron
+      hash: md5
+      md5: 4d50fd90bd1005131daa02a1be0fd962.dir
+      size: 7956727061
+      nfiles: 1945
+    outs:
+    - path: data/standardized/icaerus.mauron.jsonl
+      hash: md5
+      md5: cff9b4ffec21fc5e7f18cd1227a31b26
+      size: 484820
+  std-icaerus-other:
+    cmd: python cow_detect/utils/standardize.py data/icaerus/Other_farms --kind 
+      icaerus --out data/standardized/icaerus.other.jsonl
+    deps:
+    - path: cow_detect/utils/standardize.py
+      hash: md5
+      md5: be7f389b1dd9b21f6ffb92d0a84a4d6c
+      size: 9168
+    - path: data/icaerus/Other_farms
+      hash: md5
+      md5: 32fe3e0aa809c102346edd690167804a.dir
+      size: 768004208
+      nfiles: 126
+    outs:
+    - path: data/standardized/icaerus.other.jsonl
+      hash: md5
+      md5: 6340ac434750fbbcebad3ed50807ce56
+      size: 38867

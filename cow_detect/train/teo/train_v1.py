@@ -78,7 +78,7 @@ class TrainCfg(BaseModel):
     sort_paths: bool = Field(
         True,
         description="whether to sort paths from input dataset before splitting,"
-                    "default true for greater reproducibility"
+        "default true for greater reproducibility",
     )
     train_fraction: float
     valid_fraction: float
