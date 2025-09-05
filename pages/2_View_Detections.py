@@ -5,294 +5,194 @@ import io
 import json
 from typing import Dict, List, Any, Optional
 import numpy as np
+import boto3
+from botocore.exceptions import NoCredentialsError, ClientError
+import zipfile 
+from api.utils import download_file_from_s3
+from loguru import logger
 
-st.set_page_config(page_title="Ver Detecciones", layout="wide")
-
-st.title("Ver Resultados de Detección")
-st.markdown("Mostrar imágenes con cuadros delimitadores desde el endpoint API de detección.")
-
-def fetch_detection_data(endpoint_url: str) -> Optional[Dict[str, Any]]:
-    try:
-        response = requests.get(endpoint_url, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error al obtener datos: {str(e)}")
-        return None
-    except json.JSONDecodeError as e:
-        st.error(f"Error al analizar respuesta JSON: {str(e)}")
+# --- Lógica de Carga de Imágenes (Refactorizada) ---
+def load_image(img_data: dict) -> Optional[Image.Image]:
+    """Carga una imagen desde una S3 URI usando una función de utilidad centralizada."""
+    s3_uri = img_data.get("s3_uri")
+    if not s3_uri:
+        st.warning(f"No se encontró 's3_uri' para: {img_data.get('name')}")
         return None
 
-def load_image_from_url(image_url: str) -> Optional[Image.Image]:
     try:
-        response = requests.get(image_url, timeout=10)
-        response.raise_for_status()
-        return Image.open(io.BytesIO(response.content))
+        image_bytes = download_file_from_s3(s3_uri)
+        return Image.open(io.BytesIO(image_bytes))
     except Exception as e:
-        st.error(f"Error al cargar imagen desde {image_url}: {str(e)}")
+        st.error(f"Error al cargar la imagen desde {s3_uri}: {e}")
         return None
 
-def load_image_from_path(image_path: str) -> Optional[Image.Image]:
-    try:
-        return Image.open(image_path)
-    except Exception as e:
-        st.error(f"Error al cargar imagen desde {image_path}: {str(e)}")
-        return None
-
-def draw_bounding_boxes(
-    image: Image.Image, 
-    boxes: List[Dict[str, Any]], 
-    labels: Optional[List[str]] = None,
-    scores: Optional[List[float]] = None,
-    box_color: str = "red",
-    text_color: str = "white",
-    line_width: int = 3
-) -> Image.Image:
-    img_with_boxes = image.copy()
+# --- Drawing Logic ---
+def draw_bounding_boxes(image: Image.Image, detections: list, confidence_threshold: float) -> Image.Image:
+    """Dibuja cuadros delimitadores y un fondo translúcido para el texto del puntaje."""
+    img_with_boxes = image.copy().convert("RGBA")
     draw = ImageDraw.Draw(img_with_boxes)
-    
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 16)
-    except:
-        font = ImageFont.load_default()
-    
-    for idx, box in enumerate(boxes):
-        if isinstance(box, dict):
-            if 'xmin' in box and 'ymin' in box and 'xmax' in box and 'ymax' in box:
-                x1, y1, x2, y2 = box['xmin'], box['ymin'], box['xmax'], box['ymax']
-            elif 'x' in box and 'y' in box and 'width' in box and 'height' in box:
-                x1, y1 = box['x'], box['y']
-                x2, y2 = x1 + box['width'], y1 + box['height']
-            else:
-                continue
-        elif isinstance(box, (list, tuple)) and len(box) == 4:
-            x1, y1, x2, y2 = box
-        else:
-            continue
-        
-        draw.rectangle([(x1, y1), (x2, y2)], outline=box_color, width=line_width)
-        
-        label_text = ""
-        if labels and idx < len(labels):
-            label_text = str(labels[idx])
-        if scores and idx < len(scores):
-            score_text = f"{scores[idx]:.2f}" if isinstance(scores[idx], float) else str(scores[idx])
-            label_text = f"{label_text} ({score_text})" if label_text else score_text
-        
-        if label_text:
-            bbox = draw.textbbox((x1, y1), label_text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            draw.rectangle(
-                [(x1, y1 - text_height - 4), (x1 + text_width + 4, y1)],
-                fill=box_color
-            )
-            draw.text((x1 + 2, y1 - text_height - 2), label_text, fill=text_color, font=font)
-    
-    return img_with_boxes
 
-def main():
-    st.sidebar.header("Configuración")
-    
-    input_method = st.sidebar.radio(
-        "Método de Entrada",
-        ["Endpoint API", "JSON de Muestra"]
-    )
-    
-    if input_method == "Endpoint API":
-        endpoint_url = st.sidebar.text_input(
-            "URL del Endpoint API",
-            placeholder="https://api.example.com/detections",
-            help="Ingrese la URL de su endpoint API de detección"
-        )
-        
-        if st.sidebar.button("Obtener Detecciones"):
-            if endpoint_url:
-                with st.spinner("Obteniendo datos de detección..."):
-                    data = fetch_detection_data(endpoint_url)
-                    if data:
-                        st.session_state['detection_data'] = data
-                        st.success("¡Datos obtenidos exitosamente!")
-            else:
-                st.warning("Por favor ingrese una URL de endpoint API")
-    
-    else:
-        st.sidebar.markdown("### Formato JSON de Muestra")
-        sample_json = st.sidebar.text_area(
-            "Pegar datos JSON",
-            value=json.dumps({
-                "images": [
-                    {
-                        "image_url": "https://example.com/image1.jpg",
-                        "detections": [
-                            {
-                                "xmin": 100, "ymin": 100, 
-                                "xmax": 200, "ymax": 200,
-                                "label": "vaca",
-                                "confidence": 0.95
-                            }
-                        ]
-                    }
-                ]
-            }, indent=2),
-            height=300
-        )
-        
-        if st.sidebar.button("Cargar JSON"):
+    font_size = 60
+    try:
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
+    except IOError:
+        # Fallbacks de fuentes
+        try:
+            font = ImageFont.truetype("DejaVuSans.ttf", font_size)
+        except IOError:
             try:
-                data = json.loads(sample_json)
-                st.session_state['detection_data'] = data
-                st.success("¡JSON cargado exitosamente!")
-            except json.JSONDecodeError as e:
-                st.error(f"JSON inválido: {str(e)}")
-    
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("Opciones de Visualización")
-    
-    box_color = st.sidebar.color_picker("Color de Cuadro", "#FF0000")
-    text_color = st.sidebar.color_picker("Color de Texto", "#FFFFFF")
-    line_width = st.sidebar.slider("Ancho de Línea", 1, 10, 3)
-    show_confidence = st.sidebar.checkbox("Mostrar Puntuaciones de Confianza", True)
-    
-    if 'detection_data' in st.session_state:
-        data = st.session_state['detection_data']
-        
-        images_data = []
-        if 'images' in data:
-            images_data = data['images']
-        elif 'results' in data:
-            images_data = data['results']
-        elif isinstance(data, list):
-            images_data = data
-        else:
-            images_data = [data]
-        
-        if not images_data:
-            st.warning("No se encontraron imágenes en los datos")
-            return
-        
-        st.subheader(f"Resultados de Detección ({len(images_data)} imágenes)")
-        
-        cols_per_row = st.slider("Imágenes por fila", 1, 4, 2)
-        
-        for i in range(0, len(images_data), cols_per_row):
-            cols = st.columns(cols_per_row)
+                font = ImageFont.load_default(size=font_size)
+            except AttributeError:
+                font = ImageFont.load_default()
+
+    for det in detections:
+        score = det.get("score", 0.0)
+        if score >= confidence_threshold:
+            box = det.get("bbox")
             
-            for j, col in enumerate(cols):
-                if i + j < len(images_data):
-                    img_data = images_data[i + j]
+            if score >= 0.8:
+                color = "green"
+            elif score >= 0.5:
+                color = "yellow"
+            else:
+                color = "red"
+
+            if isinstance(box, list) and len(box) == 4:
+                draw.rectangle(box, outline=color, width=5)
+                
+                # score_text = f"{score:.2f}"  # Decimal (ej. 0.95)
+                score_text = f"{score * 100:.0f}%" # Porcentaje (ej. 95%)
+                text_position = (box[0], box[1] - (font_size + 5))
+                
+                # --- Lógica para fondo translúcido nítido ---
+                try:
+                    text_bbox = draw.textbbox(text_position, score_text, font=font)
+                    padding = 10
+                    bg_bbox = (
+                        int(text_bbox[0] - padding), int(text_bbox[1] - padding),
+                        int(text_bbox[2] + padding), int(text_bbox[3] + padding)
+                    )
                     
-                    with col:
-                        image = None
-                        if 'image_url' in img_data:
-                            image = load_image_from_url(img_data['image_url'])
-                        elif 'image_path' in img_data:
-                            image = load_image_from_path(img_data['image_path'])
-                        elif 'image' in img_data:
-                            if isinstance(img_data['image'], str):
-                                if img_data['image'].startswith('http'):
-                                    image = load_image_from_url(img_data['image'])
-                                else:
-                                    image = load_image_from_path(img_data['image'])
+                    # Crear un panel blanco translúcido
+                    overlay = Image.new('RGBA', img_with_boxes.size, (255, 255, 255, 0))
+                    draw_overlay = ImageDraw.Draw(overlay)
+                    draw_overlay.rectangle(bg_bbox, fill=(255, 255, 255, 60)) # Blanco con ~76% de transparencia
+
+                    # Combinar la capa de superposición con la imagen principal
+                    img_with_boxes = Image.alpha_composite(img_with_boxes, overlay)
+                    draw = ImageDraw.Draw(img_with_boxes) # Volver a crear el objeto Draw
+
+                except Exception as e:
+                    # En lugar de un 'pass' silencioso, registramos una advertencia.
+                    logger.warning(f"No se pudo dibujar el efecto de fondo traslúcido para el score: {e}")
+                
+                # Dibujar el texto encima del área procesada
+                draw.text(text_position, score_text, font=font, fill=color)
+
+    return img_with_boxes.convert("RGB")
+
+
+def image_to_bytes(image: Image.Image) -> bytes:
+    """Converts a PIL Image to bytes."""
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return buf.getvalue()
+
+# --- Main Page UI ---
+def main():
+    st.set_page_config(page_title="Ver Detecciones", layout="wide")
+    st.sidebar.title("Opciones de Visualización")
+    
+    confidence_percent = st.sidebar.slider(
+        "Umbral de Confianza", 
+        min_value=0, 
+        max_value=100, 
+        value=50, 
+        step=5,
+        format="%d%%"
+    )
+    confidence_threshold = confidence_percent / 100.0
+
+    st.title("Visualizador de Detecciones🖼️")
+
+    # Leer el historial de detecciones persistente de la sesión
+    if "detection_history" in st.session_state and st.session_state.detection_history:
+        history = st.session_state.detection_history
+        
+        # --- FILTROS POR FINCA Y SOBREVUELO ---
+        st.sidebar.divider()
+        st.sidebar.subheader("Filtrar Resultados")
+        
+        fincas = sorted(list(set(item['finca'] for item in history)))
+        selected_finca = st.sidebar.selectbox("Seleccionar Finca", ["Todas"] + fincas)
+        
+        if selected_finca and selected_finca != "Todas":
+            sobrevuelos = sorted(list(set(item['sobrevuelo'] for item in history if item['finca'] == selected_finca)))
+            selected_sobrevuelo = st.sidebar.selectbox("Seleccionar Sobrevuelo", ["Todos"] + sobrevuelos)
+        else:
+            selected_sobrevuelo = "Todos"
+
+        # --- Filtrar imágenes para mostrar ---
+        images_to_display = history
+        if selected_finca != "Todas":
+            images_to_display = [item for item in images_to_display if item['finca'] == selected_finca]
+        if selected_sobrevuelo != "Todos":
+            images_to_display = [item for item in images_to_display if item['sobrevuelo'] == selected_sobrevuelo]
+
+        
+        if not images_to_display:
+            st.warning("No se encontraron imágenes con los filtros seleccionados.")
+        else:
+            st.info(f"Mostrando {len(images_to_display)} imagen(es) con los filtros seleccionados.")
+            st.divider()
+
+            # Bucle para mostrar las imágenes filtradas
+            for img_data in images_to_display:
+                st.divider() 
+                finca = img_data.get('finca', 'N/A')
+                sobrevuelo = img_data.get('sobrevuelo', 'N/A')
+                st.subheader(f"Imagen: {img_data.get('name', 'N/A')} (Finca: {finca} | Sobrevuelo: {sobrevuelo})")
+                
+                image = load_image(img_data)
+                
+                if image:
+                    detections_dict = img_data.get("detections", {})
+                    if detections_dict and "boxes" in detections_dict:
+                        # Reformatear los datos de detección
+                        boxes = detections_dict.get("boxes", [])
+                        scores = detections_dict.get("scores", [0.0] * len(boxes))
+                        labels = detections_dict.get("labels", ["vaca"] * len(boxes))
                         
-                        if image:
-                            detections = []
-                            labels = []
-                            scores = []
-                            
-                            if 'detections' in img_data:
-                                detections = img_data['detections']
-                            elif 'boxes' in img_data:
-                                detections = img_data['boxes']
-                            elif 'bounding_boxes' in img_data:
-                                detections = img_data['bounding_boxes']
-                            
-                            for det in detections:
-                                if 'label' in det:
-                                    labels.append(det['label'])
-                                elif 'class' in det:
-                                    labels.append(det['class'])
-                                elif 'category' in det:
-                                    labels.append(det['category'])
-                                else:
-                                    labels.append("objeto")
-                                
-                                if show_confidence:
-                                    if 'confidence' in det:
-                                        scores.append(det['confidence'])
-                                    elif 'score' in det:
-                                        scores.append(det['score'])
-                                    elif 'prob' in det:
-                                        scores.append(det['prob'])
-                            
-                            if detections:
-                                image_with_boxes = draw_bounding_boxes(
-                                    image, 
-                                    detections, 
-                                    labels=labels if labels else None,
-                                    scores=scores if scores and show_confidence else None,
-                                    box_color=box_color,
-                                    text_color=text_color,
-                                    line_width=line_width
-                                )
-                                st.image(image_with_boxes, use_container_width=True)
-                                st.caption(f"Detecciones: {len(detections)}")
-                            else:
-                                st.image(image, use_container_width=True)
-                                st.caption("Sin detecciones")
-                            
-                            with st.expander("Detalles de Detección"):
-                                for idx, det in enumerate(detections):
-                                    st.json(det)
-                        else:
-                            st.error(f"No se pudo cargar la imagen {i + j + 1}")
+                        reformatted_detections = [
+                            {"bbox": box, "score": scores[i], "label": labels[i]}
+                            for i, box in enumerate(boxes)
+                        ]
+
+                        annotated_image = draw_bounding_boxes(image, reformatted_detections, confidence_threshold)
+                        
+                        st.image(annotated_image, width='stretch')
+
+                        with st.expander("Ver datos de detección (JSON)"):
+                            st.json(detections_dict)
+                        
+                        st.download_button(
+                           label="Descargar imagen anotada",
+                           data=image_to_bytes(annotated_image),
+                           file_name=f"annotated_{img_data.get('name', 'image.png')}",
+                           mime="image/png",
+                           key=f"download_{img_data.get('name')}"
+                        )
+                    else:
+                        st.image(image, width='stretch')
+                        st.caption("No se encontraron detecciones para esta imagen.")
+                else:
+                    st.error("No se pudo cargar o mostrar la imagen.")
+                    with st.expander("Ver datos del intento de carga"):
+                        st.json(img_data)
+
     else:
-        st.info("👈 Use la barra lateral para cargar datos de detección desde un endpoint API o pegue JSON de muestra")
-        
-        st.markdown("""
-        ### Formato JSON Esperado
-        
-        El API debe devolver JSON en uno de estos formatos:
-        
-        **Formato 1: Imágenes con detecciones**
-        ```json
-        {
-            "images": [
-                {
-                    "image_url": "https://example.com/image.jpg",
-                    "detections": [
-                        {
-                            "xmin": 100, "ymin": 100,
-                            "xmax": 200, "ymax": 200,
-                            "label": "vaca",
-                            "confidence": 0.95
-                        }
-                    ]
-                }
-            ]
-        }
-        ```
-        
-        **Formato 2: Formato alternativo de cuadros**
-        ```json
-        {
-            "results": [
-                {
-                    "image_path": "/ruta/a/imagen.jpg",
-                    "boxes": [
-                        {
-                            "x": 100, "y": 100,
-                            "width": 100, "height": 100,
-                            "class": "vaca",
-                            "score": 0.95
-                        }
-                    ]
-                }
-            ]
-        }
-        ```
-        """)
+        st.info("Aún no hay datos para mostrar. Por favor, vaya a la página de carga para procesar imágenes.")
+        st.page_link("pages/1_Upload_Images.py", label="Ir a Cargar Imágenes", icon="⬆️")
 
 if __name__ == "__main__":
     main()

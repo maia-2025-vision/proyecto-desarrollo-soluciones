@@ -131,4 +131,4 @@ cmd="python api/run_api.py"
 
 [tool.poe.tasks.dashboard]
 help="Start the streamlit dashboard"
-cmd="uv run streamlit run streamlit_app.py"
+shell="AWS_PROFILE=dvc-user uv run streamlit run streamlit_app.py"
