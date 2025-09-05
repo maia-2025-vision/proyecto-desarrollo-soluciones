@@ -55,7 +55,7 @@ stages:
       size: 3447187507
       nfiles: 1314
     outs:
-    - path: data/standardized/sky.dataset1.jsonl
+    - path: data/training/teo/v11/faster-rcnn/
       hash: md5
       md5: 314f57c2459eb37ce238aec6b38cb0ab
       size: 350340
