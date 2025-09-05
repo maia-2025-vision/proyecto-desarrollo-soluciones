@@ -55,7 +55,7 @@ stages:
       size: 3447187507
       nfiles: 1314
     outs:
-    - path: data/training/teo/v1/faster-rcnn/
+    - path: data/training/teo/v11/faster-rcnn/
       hash: md5
       md5: 321c094af1b41f361e24a3961ede1959.dir
       size: 165705359
