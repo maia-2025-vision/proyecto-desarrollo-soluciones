@@ -99,7 +99,7 @@ stages:
       --train-data data/standardized/sky.dataset1.jsonl
       --train-data-fraction 0.002
       --valid-data data/standardized/sky.dataset2.jsonl
-      --valid-data-fraction 0.02
+      --valid-data-fraction 0.2
       --save-path data/training/teo/v2-sky1-toy
     deps:
       - data/standardized/sky.dataset1.jsonl
