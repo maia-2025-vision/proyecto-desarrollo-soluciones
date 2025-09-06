@@ -349,7 +349,7 @@ def train_v2_std_cli(
             train_data_path=train_data_path,
             train_data_fraction=train_cfg.train_fraction,
             valid_data_path=valid_data_path,
-            valid_data_fraction=train_cfg.valid_data_fraction,
+            valid_data_fraction=train_cfg.valid_fraction,
             num_epochs=num_epochs,
             model_type=type(model),
             opt_params=opt_params,
