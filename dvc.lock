@@ -7,8 +7,8 @@ stages:
     deps:
     - path: cow_detect/train/teo/train_cfg_v1.yaml
       hash: md5
-      md5: 37d4d75c72e07b830044844fdb7b3453
-      size: 245
+      md5: 08e0543156465fb6e524d2a13e7a9c55
+      size: 267
     - path: data/sky/Dataset1
       hash: md5
       md5: b92f3590e07a3f9a6b62f17dde029e18.dir
@@ -17,8 +17,8 @@ stages:
     outs:
     - path: data/training/teo/v1/faster-rcnn/
       hash: md5
-      md5: 11e05b414c8276a1678c6bbe16d174d6.dir
-      size: 165709549
+      md5: 1ff337d36cffe4d3c5b9e53b1628acd8.dir
+      size: 165705444
       nfiles: 3
   train-v1-toy:
     cmd: python cow_detect/train/teo/train_v1.py --cfg 
