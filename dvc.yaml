@@ -112,7 +112,7 @@ stages:
   train-v2-derval:
     cmd: >-
       python cow_detect/train/teo/train_v2_std.py
-      --device cuda
+      --device cpu
       --cfg cow_detect/train/teo/train_cfg_v2.yaml
       --train-data data/standardized/icaerus.derval.jsonl
       --train-data-fraction 1.0
