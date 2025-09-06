@@ -102,6 +102,7 @@ stages:
       --valid-data-fraction 0.2
       --save-path data/training/teo/v2-sky1-toy
     deps:
+      - cow_detect/train/teo/train_cfg_v2.yaml
       - data/standardized/sky.dataset1.jsonl
       - data/standardized/sky.dataset2.jsonl
     outs:
@@ -111,11 +112,15 @@ stages:
   train-v2-derval:
     cmd: >-
       python cow_detect/train/teo/train_v2_std.py
-      --cfg cow_detect/train/teo/train_cfg_v2.yaml  
+      --device cuda
+      --cfg cow_detect/train/teo/train_cfg_v2.yaml
       --train-data data/standardized/icaerus.derval.jsonl
+      --train-data-fraction 1.0
       --valid-data data/standardized/icaerus.jalogny.jsonl
+      --valid-data-fraction 0.25
       --save-path data/training/teo/v2-derval
     deps:
+      - cow_detect/train/teo/train_cfg_v2.yaml
       - data/standardized/icaerus.derval.jsonl
       - data/standardized/icaerus.jalogny.jsonl
     outs:
