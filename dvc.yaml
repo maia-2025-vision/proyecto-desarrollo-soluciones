@@ -79,7 +79,7 @@ stages:
     cmd: >-
       python cow_detect/train/teo/train_v2_std.py
       --cfg cow_detect/train/teo/train_cfg_v2.yaml
-      --device mps
+      --device cpu
       --train-data data/standardized/sky.dataset1.jsonl
       --train-data-fraction 0.3
       --valid-data data/standardized/sky.dataset2.jsonl
@@ -89,7 +89,7 @@ stages:
       - data/standardized/sky.dataset1.jsonl
       - data/standardized/sky.dataset2.jsonl
     outs:
-      - data/training/teo/v2-sky1
+      - data/training/teo/v2-sky1-mps
 
 
   train-v2-derval:
