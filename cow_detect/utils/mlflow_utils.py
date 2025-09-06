@@ -46,7 +46,7 @@ def log_mapr_metrics(
     prefix: str,
     step: int,
     max_detect_thresholds: list[int],
-    decimals: int = 4
+    decimals: int = 4,
 ) -> dict[str, float]:
     logged = {}
     for metric in ["map", "map_50", "map_75", "map_medium", "mar_medium"]:

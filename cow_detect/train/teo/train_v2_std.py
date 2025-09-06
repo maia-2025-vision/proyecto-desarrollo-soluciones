@@ -18,10 +18,9 @@ from torchmetrics.functional.detection import intersection_over_union, mean_aver
 from cow_detect.datasets.std import AnnotatedImagesDataset
 from cow_detect.train.teo.train_v1 import TrainCfg, get_model, save_model_and_version
 from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable_singletons, zip_dict
-from cow_detect.utils.debug import summarize
-from cow_detect.utils.metrics import calculate_iou
 
-# from cow_detect.utils.metrics import calculate_iou
+# from cow_detect.utils.debug import summarize
+from cow_detect.utils.metrics import calculate_iou
 from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
 from cow_detect.utils.pytorch import detach_dicts, dict_to_device
 from cow_detect.utils.train import get_num_batches
@@ -118,8 +117,10 @@ class TrainerV2:
         mlflow.log_metric("mean_train_loss", float(mean_train_loss), step=epoch)
         mlflow.log_metric("mean_train_iou", float(mean_train_iou), step=epoch)
         logged_maprs = log_mapr_metrics(
-            mapr_metrics, prefix="train", step=epoch,
-            max_detect_thresholds=self.max_detection_thresholds
+            mapr_metrics,
+            prefix="train",
+            step=epoch,
+            max_detect_thresholds=self.max_detection_thresholds,
         )
         logger.info(f"Epoch {epoch}: {mean_train_loss=:.4}, {mean_train_iou=:.4f}, {logged_maprs=}")
 
@@ -187,8 +188,10 @@ class TrainerV2:
 
         mlflow.log_metric("mean_valid_iou", float(mean_valid_iou), step=epoch)
         logged_mapr = log_mapr_metrics(
-            mapr_metrics, prefix="valid", step=epoch,
-            max_detect_thresholds=self.max_detection_thresholds
+            mapr_metrics,
+            prefix="valid",
+            step=epoch,
+            max_detect_thresholds=self.max_detection_thresholds,
         )
         logger.info(
             f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {non_nan_ious=}, "
