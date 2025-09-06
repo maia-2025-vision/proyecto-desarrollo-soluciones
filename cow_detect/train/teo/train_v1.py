@@ -96,7 +96,7 @@ class TrainCfg(BaseModel):
     max_detection_thresholds: Annotated[
         list[int],
         Field(
-            default_factory=lambda: [3, 5, 10],
+            default_factory=lambda: [3, 5, 10, 100],
             description="thresholds used for calculating mAR metrics",
         ),
     ]

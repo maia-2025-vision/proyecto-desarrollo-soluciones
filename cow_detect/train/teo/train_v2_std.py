@@ -117,7 +117,8 @@ class TrainerV2:
         mlflow.log_metric("mean_train_loss", float(mean_train_loss), step=epoch)
         mlflow.log_metric("mean_train_iou", float(mean_train_iou), step=epoch)
         logged_maprs = log_mapr_metrics(
-            mapr_metrics, prefix="train", max_detect_thresholds=self.max_detection_thresholds
+            mapr_metrics, prefix="train", step=epoch,
+            max_detect_thresholds=self.max_detection_thresholds
         )
         logger.info(f"Epoch {epoch}: {mean_train_loss=:.4}, {mean_train_iou=:.4f}, {logged_maprs=}")
 
@@ -185,7 +186,8 @@ class TrainerV2:
 
         mlflow.log_metric("mean_valid_iou", float(mean_valid_iou), step=epoch)
         logged_mapr = log_mapr_metrics(
-            mapr_metrics, prefix="valid", max_detect_thresholds=self.max_detection_thresholds
+            mapr_metrics, prefix="valid", step=epoch,
+            max_detect_thresholds=self.max_detection_thresholds
         )
         logger.info(
             f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {non_nan_ious=}, "

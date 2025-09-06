@@ -75,7 +75,7 @@ stages:
     outs:
     - data/training/teo/v1/faster-rcnn/
 
-  train-v2-sky1: # mps is an accelarator available on some Macs
+  train-v2-sky1:
     cmd: >-
       python cow_detect/train/teo/train_v2_std.py
       --cfg cow_detect/train/teo/train_cfg_v2.yaml
@@ -90,6 +90,22 @@ stages:
       - data/standardized/sky.dataset2.jsonl
     outs:
       - data/training/teo/v2-sky1
+
+  train-v2-toy:
+    cmd: >-
+      python cow_detect/train/teo/train_v2_std.py
+      --cfg cow_detect/train/teo/train_cfg_v2.yaml
+      --device cpu
+      --train-data data/standardized/sky.dataset1.jsonl
+      --train-data-fraction 0.01
+      --valid-data data/standardized/sky.dataset2.jsonl
+      --valid-data-fraction 0.02
+      --save-path data/training/teo/v2-sky1-toy
+    deps:
+      - data/standardized/sky.dataset1.jsonl
+      - data/standardized/sky.dataset2.jsonl
+    outs:
+      - data/training/teo/v2-sky1-toy
 
 
   train-v2-derval:

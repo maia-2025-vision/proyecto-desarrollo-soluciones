@@ -44,19 +44,20 @@ def log_params_v1(
 def log_mapr_metrics(
     mapr_metrics: dict[str, float],
     prefix: str,
+    step: int,
     max_detect_thresholds: list[int],
     decimals: int = 4
 ) -> dict[str, float]:
     logged = {}
-    for metric in ["map", "map_50", "map_75", "map_medium", "mar_medium"]:
+    for metric in ["map", "map_50", "map_75", "map_medium"]:
         value = round(mapr_metrics[metric], decimals)
-        mlflow.log_param(f"{prefix}_{metric}", value)
+        mlflow.log_metric(f"{prefix}_{metric}", value, step=step)
         logged[metric] = value
 
     for mdt in max_detect_thresholds:
         key = f"mar_{mdt}"
         value = round(mapr_metrics[key], decimals)
-        mlflow.log_param(f"{prefix}_{metric}", value)
+        mlflow.log_metric(f"{prefix}_{metric}", value, step=step)
         logged[key] = value
 
     return logged
