@@ -222,3 +222,24 @@ stages:
       hash: md5
       md5: e29aaf920d9dda94957349045d719931
       size: 920471
+  train-v2-sky1:
+    cmd: python cow_detect/train/teo/train_v2_std.py --cfg 
+      cow_detect/train/teo/train_cfg_v2.yaml --device cpu --train-data 
+      data/standardized/sky.dataset1.jsonl --train-data-fraction 0.3 
+      --valid-data data/standardized/sky.dataset2.jsonl --valid-data-fraction 
+      1.0 --save-path data/training/teo/v2-sky1
+    deps:
+    - path: data/standardized/sky.dataset1.jsonl
+      hash: md5
+      md5: 314f57c2459eb37ce238aec6b38cb0ab
+      size: 350340
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    outs:
+    - path: data/training/teo/v2-sky1
+      hash: md5
+      md5: 86137c82e3edc51abe03b038a2de90d3.dir
+      size: 165705546
+      nfiles: 3

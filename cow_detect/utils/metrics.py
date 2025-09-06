@@ -2,8 +2,13 @@ import torch
 from torchvision.ops import box_iou  # type: ignore[import-untyped]
 
 
-def calculate_iou(predictions: list[dict], targets: list[dict]) -> tuple[float, int]:
-    """Calculate IoU (intersection over union) between predictions and targets."""
+def mean_iou(predictions: list[dict], targets: list[dict]) -> tuple[float, int]:
+    """Calculates mean "best" IoU (intersection over union) between predictions and targets.
+
+    Compute the best IoU for each predicted box (each element of predictions may contain many boxes)
+    Finally divide the total sum of all IoUs by the total number of predicted boxes.
+    If total number of predicted boxes is 0, return 0.
+    """
     total_iou: float = 0.0
     num_iou: int = 0
 

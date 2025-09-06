@@ -2,6 +2,7 @@
 import gc
 import io
 import json
+import time
 from pathlib import Path
 
 import mlflow
@@ -11,16 +12,16 @@ import tqdm
 import typer
 import yaml
 from loguru import logger
+from pydantic import BaseModel
 from torch import nn
 from torch.utils.data import DataLoader
-from torchmetrics.functional.detection import intersection_over_union, mean_average_precision
+from torchmetrics.functional.detection import mean_average_precision
 
 from cow_detect.datasets.std import AnnotatedImagesDataset
-from cow_detect.train.teo.train_v1 import TrainCfg, get_model, save_model_and_version
+from cow_detect.train.teo.train_v1 import TrainCfg, get_model
+from cow_detect.train.train_utils import save_model_and_version
 from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable_singletons, zip_dict
-
-# from cow_detect.utils.debug import summarize
-from cow_detect.utils.metrics import calculate_iou
+from cow_detect.utils.metrics import mean_iou
 from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
 from cow_detect.utils.pytorch import detach_dicts, dict_to_device
 from cow_detect.utils.train import get_num_batches
@@ -39,27 +40,46 @@ class TrainerV2:
         self,
         device: torch.device,
         optimizer: torch.optim.Optimizer,
+        train_cfg: BaseModel,
+        key_metric: str,  # used for deciding whether to
         max_detection_thresholds: list[int],  # used to measure mAR
+        train_data_loader: DataLoader,
+        valid_data_loader: DataLoader,
+        save_path: Path | None,
     ) -> None:
+        """Put together resoruces and params used in training.
+
+        :param device: What accelerator device to train on
+        :param optimizer: Optimizer used in trainin loop
+        :param key_metric: what metric is used to decide whether to save a model,
+                e.g "mar_10"
+        :param max_detection_thresholds: Used to compute "mar_{mdt}" metrics,
+                mdt will range over these values
+        :param save_path: if not None model will be saved to this path
+        :param train_data_loader: DataLoader for training data
+        :param valid_data_loader: DataLoader for validation data
+        """
         self.device = device
         self.optimizer = optimizer
+        self.key_metric = key_metric
+        self.train_cfg = train_cfg
+        self.train_data_loader = train_data_loader
+        self.valid_data_loader = valid_data_loader
         self.max_detection_thresholds = max_detection_thresholds
+        self.save_path = save_path
 
     def train_epoch(
         self,
         epoch: int,
         model: nn.Module,
-        train_data_loader: DataLoader,
     ) -> None:
         """Run loop over train data for one epoch."""
         train_losses = []  # one per batch
-        train_ious: list[float] = []  # one per image
         all_targets: list[dict] = []
         all_predictions: list[dict] = []
 
-        n_batches = get_num_batches(train_data_loader)
-        pbar = tqdm.tqdm(train_data_loader, total=n_batches)
-
+        n_batches = get_num_batches(self.train_data_loader)
+        pbar = tqdm.tqdm(self.train_data_loader, total=n_batches)
         for batch in pbar:
             # pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
             model.train()
@@ -78,15 +98,7 @@ class TrainerV2:
                 all_predictions.extend(predictions)
                 model.train()
 
-            # Old iou calculation
-            # mean_iou = calculate_iou(predictions, targets)
-            ious_batch = [
-                intersection_over_union(pred["boxes"], tgt["boxes"]).detach().item()
-                for pred, tgt in zip(predictions, targets, strict=False)
-            ]
-            # print("ious_batch:", summarize(ious_batch))
-            train_ious.extend(ious_batch)
-
+            running_train_iou, _ = mean_iou(all_predictions, all_targets)
             self.optimizer.zero_grad()
             total_loss.backward()
             self.optimizer.step()
@@ -95,7 +107,7 @@ class TrainerV2:
 
             pbar.set_description(
                 f"Epoch {epoch}: training: mean.loss={np.mean(train_losses):.4f}, "
-                f"mean.train.iou={np.nanmean(train_ious):.4f}"
+                f"mean.train.iou={running_train_iou:.4f}"
             )
 
         mapr_metrics_raw = mean_average_precision(  # type: ignore[arg-type]
@@ -105,7 +117,6 @@ class TrainerV2:
             iou_type="bbox",
             max_detection_thresholds=self.max_detection_thresholds,
         )
-        logger.info(f"{self.max_detection_thresholds=}, {mapr_metrics_raw=}")
 
         mapr_metrics = make_jsonifiable_singletons(
             mapr_metrics_raw,  # type: ignore[arg-type]
@@ -113,37 +124,40 @@ class TrainerV2:
         )
 
         mean_train_loss = np.mean(train_losses)
-        mean_train_iou = np.nanmean(train_ious)
+        train_iou, _ = mean_iou(all_predictions, all_targets)
         mlflow.log_metric("mean_train_loss", float(mean_train_loss), step=epoch)
-        mlflow.log_metric("mean_train_iou", float(mean_train_iou), step=epoch)
+        mlflow.log_metric("mean_train_iou", float(train_iou), step=epoch)
         logged_maprs = log_mapr_metrics(
             mapr_metrics,
             prefix="train",
             step=epoch,
             max_detect_thresholds=self.max_detection_thresholds,
         )
-        logger.info(f"Epoch {epoch}: {mean_train_loss=:.4}, {mean_train_iou=:.4f}, {logged_maprs=}")
+        logger.info(
+            f"Epoch {epoch} (train): {mean_train_loss=:.4}, {train_iou=:.4f}, {logged_maprs=}"
+        )
 
     def validate_epoch(
         self,
         epoch: int,
         model: nn.Module,
-        valid_data_loader: DataLoader,
-    ) -> None:
-        """Run loop over validation data after an epoch."""
+    ) -> dict[str, float]:
+        """Run loop over validation data after an epoch.
+
+        Return a dictionary with validation metrics.
+        """
         model.eval()
-        # valid_scores = []
-        valid_ious = []
+        metrics: dict[str, float] = {}  # to be returned
 
         # list of targets and predictions to use torchmetrics api below
         # each of these lists should have as many elements as images in validation_dataset
         all_targets: list[dict[str, torch.Tensor]] = []
         all_predictions: list[dict[str, torch.Tensor]] = []
 
-        n_batches = get_num_batches(valid_data_loader)
+        n_batches = get_num_batches(self.valid_data_loader)
         with torch.no_grad():
-            pbar = tqdm.tqdm(valid_data_loader, total=n_batches)
-            pbar.set_description("Epoch 0: VALIDATION: avg.mean.iou=.....")
+            pbar = tqdm.tqdm(self.valid_data_loader, total=n_batches)
+            pbar.set_description("Epoch 0: VALIDATION: mean.iou=....., n_iou_preds=...")
             for batch in pbar:
                 images = [image.to(self.device) for image in batch["image_pt"]]
                 targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
@@ -153,16 +167,12 @@ class TrainerV2:
                 # PREDICTION happens here:
                 predictions: list[dict] = detach_dicts(model(images, targets))
                 all_predictions.extend(predictions)
-
-                ious_batch = [
-                    intersection_over_union(pred["boxes"], tgt["boxes"]).detach().item()
-                    for pred, tgt in zip(predictions, targets, strict=False)
-                ]
-                logger.info(f"ios_batch={ious_batch}")
-                valid_ious.extend(ious_batch)
-
+                t0 = time.perf_counter()
+                running_mean_iou, iou_preds = mean_iou(all_predictions, all_targets)
+                elapsed = time.perf_counter() - t0
                 pbar.set_description(
-                    f"Epoch {epoch}: VALIDATION:  avg.mean.iou={np.mean(valid_ious):.4f}"
+                    f"Epoch {epoch}: VALIDATION:  mean.iou={running_mean_iou:.4f}, "
+                    f"n_iou_preds={iou_preds}, elapsed={elapsed:.4f}"
                 )
 
         mapr_metrics_raw = mean_average_precision(
@@ -178,15 +188,9 @@ class TrainerV2:
             negative_to_nan=True,
         )
 
-        logger.info(
-            f"Epoch {epoch} - VALIDATION mAP/R metrics:\n{json.dumps(mapr_metrics, indent=2)}"
-        )
+        mean_valid_iou, num_iou_preds = mean_iou(all_predictions, all_targets)
 
-        old_valid_iou, old_num_iou = calculate_iou(all_predictions, all_targets)
-        mean_valid_iou = np.nanmean(valid_ious)
-        non_nan_ious = int((~np.isnan(valid_ious)).sum())
-
-        mlflow.log_metric("mean_valid_iou", float(mean_valid_iou), step=epoch)
+        mlflow.log_metric("mean_valid_iou", mean_valid_iou, step=epoch)
         logged_mapr = log_mapr_metrics(
             mapr_metrics,
             prefix="valid",
@@ -194,10 +198,53 @@ class TrainerV2:
             max_detect_thresholds=self.max_detection_thresholds,
         )
         logger.info(
-            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {non_nan_ious=}, "
-            f"{old_valid_iou=:.4f}, {old_num_iou=}"
+            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {num_iou_preds=}, "
             f"{logged_mapr=}"
         )
+
+        metrics["mean_valid_iou"] = mean_valid_iou
+        metrics["num_iou_preds"] = num_iou_preds
+        metrics |= mapr_metrics
+
+        return metrics
+
+    def run_experiment(
+        self,
+        max_epochs: int,
+        model: nn.Module,
+    ) -> None:
+        """Run a number of epochs of train an validation."""
+        git_revision = get_git_revision_hash()
+
+        best_key_metric_value = -float("inf")
+        for epoch in range(max_epochs):
+            # Train loop:
+            self.train_epoch(epoch, model)
+            torch.cuda.empty_cache()
+            gc.collect()
+
+            # validation loop:
+            metrics = self.validate_epoch(epoch, model)
+            key_metric_value = metrics[self.key_metric]
+
+            torch.cuda.empty_cache()
+            gc.collect()
+            mlflow.log_metric("last_finished_epoch", epoch, step=epoch)
+
+            # Save the fine-tuned model
+            if self.save_path is not None and key_metric_value > best_key_metric_value:
+                logger.info(
+                    f"Saving model at epoch {epoch}, key_metric={self.key_metric}, "
+                    f"value={key_metric_value:.4f}, "
+                    f"previous best value= {best_key_metric_value:.4f}"
+                )
+                best_key_metric_value = key_metric_value
+                save_model_and_version(
+                    model,
+                    train_cfg=self.train_cfg,
+                    git_revision=git_revision,
+                    save_path=self.save_path,
+                )
 
 
 DEFAULT_LABEL_TO_ID: dict[str, int] = {"cow": 1, "cattle": 1, "calf": 1}
@@ -337,8 +384,13 @@ def train_v2_std_cli(
     )
     trainer = TrainerV2(
         device=torch.device(train_cfg.device),
+        train_cfg=train_cfg,
         optimizer=optimizer,
         max_detection_thresholds=train_cfg.max_detection_thresholds,
+        key_metric=train_cfg.key_metric,
+        train_data_loader=train_data_loader,
+        valid_data_loader=valid_data_loader,
+        save_path=save_path,
     )
 
     # Training loop
@@ -350,8 +402,8 @@ def train_v2_std_cli(
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         log_params_v1(
             device=train_cfg.device,
-            git_revision=git_revision,
             train_cfg=train_cfg.model_dump(),
+            git_revision=git_revision,
             train_cfg_path=train_cfg_path,
             train_data_path=train_data_path,
             train_data_fraction=train_cfg.train_fraction,
@@ -363,21 +415,7 @@ def train_v2_std_cli(
             dl_params=dl_params,
         )
 
-        for epoch in range(num_epochs):
-            # Train loop:
-            trainer.train_epoch(epoch, model, train_data_loader)
-            torch.cuda.empty_cache()
-            gc.collect()
-            # validation loop:
-            trainer.validate_epoch(epoch, model, valid_data_loader)
-            torch.cuda.empty_cache()
-            gc.collect()
-
-    # Save the fine-tuned model
-    if save_path is not None:
-        save_model_and_version(
-            model, train_cfg=train_cfg, git_revision=git_revision, save_path=save_path
-        )
+        trainer.run_experiment(max_epochs=num_epochs, model=model)
 
 
 if __name__ == "__main__":
