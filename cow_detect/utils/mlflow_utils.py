@@ -55,7 +55,7 @@ def log_mapr_metrics(
 
     for mdt in max_detect_thresholds:
         key = f"mar_{mdt}"
-        value = raound(mapr_metrics[key], decimals)
+        value = round(mapr_metrics[key], decimals)
         mlflow.log_param(f"{prefix}_{metric}", value)
         logged[key] = value
 

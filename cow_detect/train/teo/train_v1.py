@@ -244,6 +244,7 @@ def train_faster_rcnn(
 
     logger.info(f"Using device={train_cfg.device} as specified in train_cfg.")
     device = torch.device(train_cfg.device)
+    assert train_cfg.valid_fraction is not None
 
     train_img_paths, valid_img_paths = train_validation_split(
         imgs_dir=train_data_path / "img",
