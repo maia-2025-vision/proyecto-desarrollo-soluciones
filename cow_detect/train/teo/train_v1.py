@@ -96,8 +96,9 @@ class TrainCfg(BaseModel):
     max_detection_thresholds: Annotated[
         list[int],
         Field(
-            default_factory=lambda: [3, 5, 10, 100],
-            description="thresholds used for calculating mAR metrics",
+            default_factory=lambda: [5, 10, 25],
+            description="thresholds used for calculating mAR metrics, needs to be limited to at most 3 elems..."
+                        "(bug in torchmetrics?)",
         ),
     ]
 

@@ -106,6 +106,7 @@ class TrainerV2:
             iou_type="bbox",
             max_detection_thresholds=self.max_detection_thresholds,
         )
+        logger.info(f"{self.max_detection_thresholds=}, {mapr_metrics_raw=}")
 
         mapr_metrics = make_jsonifiable_singletons(
             mapr_metrics_raw,  # type: ignore[arg-type]
