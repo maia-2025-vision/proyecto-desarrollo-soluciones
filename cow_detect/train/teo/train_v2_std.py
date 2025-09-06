@@ -107,7 +107,7 @@ class TrainerV2:
 
         mapr_metrics = make_jsonifiable_singletons(
             mapr_metrics_raw,  # type: ignore[arg-type]
-            negative_to_nan=True
+            negative_to_nan=True,
         )
 
         mean_train_loss = np.mean(train_losses)
@@ -152,6 +152,7 @@ class TrainerV2:
                     intersection_over_union(pred["boxes"], tgt["boxes"]).detach().item()
                     for pred, tgt in zip(predictions, targets, strict=False)
                 ]
+                logger.info(f"ios_batch={ious_batch}")
                 valid_ious.extend(ious_batch)
 
                 pbar.set_description(
@@ -168,7 +169,7 @@ class TrainerV2:
 
         mapr_metrics = make_jsonifiable_singletons(
             mapr_metrics_raw,  # type: ignore[arg-type]
-            negative_to_nan=True
+            negative_to_nan=True,
         )
 
         logger.info(
