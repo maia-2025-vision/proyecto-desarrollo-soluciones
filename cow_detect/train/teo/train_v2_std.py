@@ -198,7 +198,7 @@ class TrainerV2:
             max_detect_thresholds=self.max_detection_thresholds,
         )
         logger.info(
-            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {num_iou_preds=}, "
+            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4f}, {num_iou_preds=}, "
             f"{logged_mapr=}"
         )
 
