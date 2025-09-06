@@ -351,6 +351,7 @@ def train_v2_std_cli(
         log_params_v1(
             device=train_cfg.device,
             git_revision=git_revision,
+            train_cfg=train_cfg.model_dump(),
             train_cfg_path=train_cfg_path,
             train_data_path=train_data_path,
             train_data_fraction=train_cfg.train_fraction,

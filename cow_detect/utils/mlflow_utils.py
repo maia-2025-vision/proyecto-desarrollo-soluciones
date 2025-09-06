@@ -2,6 +2,7 @@ from hashlib import md5
 from pathlib import Path
 
 import mlflow
+import yaml
 
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 
@@ -10,6 +11,7 @@ def log_params_v1(
     *,
     device: str,
     git_revision: str,
+    train_cfg: dict[str, object],
     train_cfg_path: Path,
     train_data_path: Path,
     train_data_fraction: float,
@@ -20,16 +22,15 @@ def log_params_v1(
     opt_params: OptimizerParams,
     dl_params: DataLoaderParams,
 ) -> None:
-    cfg_md5 = md5(train_cfg_path.read_bytes()).hexdigest()
+    cfg_full = yaml.safe_dump(train_cfg)
 
     mlflow.log_param("data_set", str(train_data_path))
     mlflow.log_param("train_data_fraction", train_data_fraction)
     mlflow.log_param("valid_data_set", str(valid_data_path))
     mlflow.log_param("valid_data_fraction", valid_data_fraction)
     mlflow.log_param("git_revision_12", git_revision[:12])
-    mlflow.log_param("cfg_md5", cfg_md5)
     mlflow.log_param("cfg_path", str(train_cfg_path))
-    mlflow.log_param("cfg_full", str(train_cfg_path.read_text()))
+    mlflow.log_param("cfg_full", cfg_full)
     mlflow.log_param("model_class", model_type.__name__)
     mlflow.log_param("num_epochs", num_epochs)
     mlflow.log_param("optimizer_class", opt_params.optimizer_class)

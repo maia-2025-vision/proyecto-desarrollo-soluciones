@@ -98,7 +98,7 @@ class TrainCfg(BaseModel):
         Field(
             default_factory=lambda: [5, 10, 25],
             description="thresholds used for calculating mAR metrics,"
-                        " needs to be limited to at most 3 elems...(bug in torchmetrics?)",
+            " needs to be limited to at most 3 elems...(bug in torchmetrics?)",
         ),
     ]
 
