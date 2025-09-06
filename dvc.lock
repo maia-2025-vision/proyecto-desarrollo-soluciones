@@ -264,3 +264,28 @@ stages:
       md5: 0751bf4a1902e2e78b3e7c7a931b7c56.dir
       size: 165705573
       nfiles: 3
+  train-v2-derval:
+    cmd: python cow_detect/train/teo/train_v2_std.py --device cpu --cfg 
+      cow_detect/train/teo/train_cfg_v2.yaml --train-data 
+      data/standardized/icaerus.derval.jsonl --train-data-fraction 1.0 
+      --valid-data data/standardized/icaerus.jalogny.jsonl --valid-data-fraction
+      0.25 --save-path data/training/teo/v2-derval
+    deps:
+    - path: cow_detect/train/teo/train_cfg_v2.yaml
+      hash: md5
+      md5: 6f2f1188ff0cf5735248b1a20a32ec53
+      size: 275
+    - path: data/standardized/icaerus.derval.jsonl
+      hash: md5
+      md5: 9064a73cbaed6bcf0490c4305843c019
+      size: 71877
+    - path: data/standardized/icaerus.jalogny.jsonl
+      hash: md5
+      md5: da05ce1bbfdf24bf99b0554713d44d03
+      size: 327079
+    outs:
+    - path: data/training/teo/v2-derval
+      hash: md5
+      md5: 0e0bc9c45c8f77f91573cceb6a5723ef.dir
+      size: 165705572
+      nfiles: 3

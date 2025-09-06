@@ -175,7 +175,7 @@ class Trainer:
         """Run loop over validation data after an epoch."""
         model.eval()
         valid_scores = []
-        valid_ious: list[float] = [] # one per batch
+        valid_ious: list[float] = []  # one per batch
 
         n_batches = get_num_batches(valid_data_loader)
         with torch.no_grad():

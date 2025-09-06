@@ -132,10 +132,10 @@ stages:
       --cfg cow_detect/train/teo/train_cfg_toy.yaml  --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn-toy/
     deps:
-    - cow_detect/train/teo/train_cfg_toy.yaml
-    - data/sky/Dataset1
+      - cow_detect/train/teo/train_cfg_toy.yaml
+      - data/sky/Dataset1
     outs:
-    - data/training/teo/v1/faster-rcnn-toy/
+      - data/training/teo/v1/faster-rcnn-toy/
 
   eval-v1-sky2:
     # First example of evaluation on small dataset
