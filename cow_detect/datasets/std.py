@@ -46,13 +46,15 @@ class AnnotatedImagesDataset(Dataset):
             rec for rec in records if rec.image.status == "ok" and rec.annotations.status == "ok"
         ]
 
-        logger.info(f"Ok records: {len(self.records)}")
+        logger.info(f"dataset: {name} - Ok records: {len(self.records)}")
 
         if limit_fraction is not None:
             limit = int(math.ceil(len(self.records) * limit_fraction))
-            logger.info(f"Limiting dataset to {limit} records (fraction: {limit_fraction})")
+            logger.info(
+                f"dataset: {name} - limited to {limit} records (fraction: {limit_fraction})"
+            )
         elif limit is not None:
-            logger.info(f"Limiting dataset to {limit} records")
+            logger.info(f"dataset: {name} - limited to {limit} records")
         else:  # do not limit
             limit = len(self.records)
 

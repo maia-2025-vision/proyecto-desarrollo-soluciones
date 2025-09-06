@@ -2,7 +2,7 @@ import torch
 from torchvision.ops import box_iou  # type: ignore[import-untyped]
 
 
-def calculate_iou(predictions: list[dict], targets: list[dict]) -> float:
+def calculate_iou(predictions: list[dict], targets: list[dict]) -> tuple[float, int]:
     """Calculate IoU (intersection over union) between predictions and targets."""
     total_iou: float = 0.0
     num_iou: int = 0
@@ -17,4 +17,4 @@ def calculate_iou(predictions: list[dict], targets: list[dict]) -> float:
             total_iou += float(torch.sum(max_iou_per_pred).detach().item())
             num_iou += pred_boxes.shape[0]
 
-    return total_iou / num_iou if num_iou > 0 else 0
+    return (total_iou / num_iou if num_iou > 0 else 0), num_iou

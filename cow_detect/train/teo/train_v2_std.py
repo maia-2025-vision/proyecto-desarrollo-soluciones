@@ -19,10 +19,11 @@ from cow_detect.datasets.std import AnnotatedImagesDataset
 from cow_detect.train.teo.train_v1 import TrainCfg, get_model, save_model_and_version
 from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable_singletons, zip_dict
 from cow_detect.utils.debug import summarize
+from cow_detect.utils.metrics import calculate_iou
 
 # from cow_detect.utils.metrics import calculate_iou
 from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
-from cow_detect.utils.pytorch import detach_dicts
+from cow_detect.utils.pytorch import detach_dicts, dict_to_device
 from cow_detect.utils.train import get_num_batches
 from cow_detect.utils.versioning import get_git_revision_hash
 
@@ -65,6 +66,7 @@ class TrainerV2:
             model.train()
             images = [image.to(self.device) for image in batch["image_pt"]]
             targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
+            targets = [dict_to_device(tgt, self.device) for tgt in targets]
             all_targets.extend(targets)
 
             loss_dict = model(images, targets)
@@ -142,6 +144,7 @@ class TrainerV2:
             for batch in pbar:
                 images = [image.to(self.device) for image in batch["image_pt"]]
                 targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
+                targets = [dict_to_device(tgt, self.device) for tgt in targets]
                 all_targets.extend(targets)
 
                 # PREDICTION happens here:
@@ -176,6 +179,7 @@ class TrainerV2:
             f"Epoch {epoch} - VALIDATION mAP/R metrics:\n{json.dumps(mapr_metrics, indent=2)}"
         )
 
+        old_valid_iou, old_num_iou = calculate_iou(all_predictions, all_targets)
         mean_valid_iou = np.nanmean(valid_ious)
         non_nan_ious = int((~np.isnan(valid_ious)).sum())
 
@@ -184,7 +188,9 @@ class TrainerV2:
             mapr_metrics, prefix="valid", max_detect_thresholds=self.max_detection_thresholds
         )
         logger.info(
-            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {non_nan_ious=}, {logged_mapr=}"
+            f"Epoch {epoch}: VALIDATION : {mean_valid_iou=:.4}, {non_nan_ious=}, "
+            f"{old_valid_iou=:.4f}, {old_num_iou=}"
+            f"{logged_mapr=}"
         )
 
 
@@ -195,7 +201,21 @@ DEFAULT_LABEL_TO_ID: dict[str, int] = {"cow": 1, "cattle": 1, "calf": 1}
 def train_v2_std_cli(
     train_cfg_path: Path = typer.Option(..., "--cfg", help="where to get the config from"),
     train_data_path: Path = typer.Option(..., "--train-data", help="where to get train data from"),
+    train_data_fraction: float | None = typer.Option(
+        None,
+        "--train-data-fraction",
+        help="what fraction of the training data to use. "
+        "If specified will take precedence over the on in the config. "
+        "Otherwise, it must be specified in config ",
+    ),
     valid_data_path: Path = typer.Option(..., "--valid-data", help="where to get valid. data from"),
+    valid_data_fraction: float | None = typer.Option(
+        None,
+        "--valid-data-fraction",
+        help="what fraction of the validation data to use. "
+        "If specified will take precedence over the on in the config. "
+        "Otherwise, it must be specified in config",
+    ),
     device: str | None = typer.Option(
         None,
         "--device",
@@ -228,13 +248,37 @@ def train_v2_std_cli(
         logger.error(f"Failed to parse load or parse train_cfg:\n{json.dumps(cfg_dict, indent=2)}")
         raise
 
-    logger.info(f"Train cfg (full including defaults):\n{train_cfg.model_dump_json(indent=2)}\n")
-    device = device or train_cfg.device
-    assert device is not None
-    logger.info(f"Using device: {device}")
+    if device is not None:
+        train_cfg.device = device
+        logger.info(f"Overriding train_cfg.device={device} (from CLI option)")
+    del device
+    assert train_cfg.device is not None
+
+    logger.info(f"Using device: {train_cfg.device}")
     # TODO: make this configurable?
     label_to_id = DEFAULT_LABEL_TO_ID
     logger.info(f"Using label to id: {json.dumps(label_to_id)}")
+
+    if train_data_fraction is not None:
+        train_cfg.train_fraction = train_data_fraction
+        logger.info(f"Overriding {train_cfg.train_fraction=} (from CLI option)")
+    assert (
+        train_cfg.train_fraction is not None
+    ), "train_data_fraction must be specified in config or as CLI option"
+    del train_data_fraction
+
+    if valid_data_fraction is not None:
+        train_cfg.valid_fraction = valid_data_fraction
+        logger.info(f"Overriding {train_cfg.valid_fraction=}(from CLI option) ")
+    assert (
+        train_cfg.valid_fraction is not None
+    ), "valid_data_fraction must be specified in config or as CLI option"
+    del valid_data_fraction
+
+    logger.info(
+        f"Train cfg (full, including defaults, and overrides):\n"
+        f"{train_cfg.model_dump_json(indent=2)}\n"
+    )
 
     # Create the dataset and dataloader
     train_data_set = AnnotatedImagesDataset(
@@ -271,7 +315,7 @@ def train_v2_std_cli(
     logger.info(f"Training model with num_classes={train_cfg.num_classes}")
 
     model = get_model(train_cfg.num_classes)
-    model.to(device)
+    model.to(train_cfg.device)
 
     # Define the optimizer
     params = [p for p in model.parameters() if p.requires_grad]
@@ -286,7 +330,7 @@ def train_v2_std_cli(
         weight_decay=opt_params.weight_decay,
     )
     trainer = TrainerV2(
-        device=torch.device(device),
+        device=torch.device(train_cfg.device),
         optimizer=optimizer,
         max_detection_thresholds=train_cfg.max_detection_thresholds,
     )
@@ -299,11 +343,13 @@ def train_v2_std_cli(
     experiment = mlflow.set_experiment(train_cfg.experiment_name)
     with mlflow.start_run(experiment_id=experiment.experiment_id):
         log_params_v1(
-            device=device,
+            device=train_cfg.device,
             git_revision=git_revision,
             train_cfg_path=train_cfg_path,
             train_data_path=train_data_path,
+            train_data_fraction=train_cfg.train_fraction,
             valid_data_path=valid_data_path,
+            valid_data_fraction=train_cfg.valid_data_fraction,
             num_epochs=num_epochs,
             model_type=type(model),
             opt_params=opt_params,

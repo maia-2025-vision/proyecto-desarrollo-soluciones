@@ -25,6 +25,6 @@ def detach_dicts(dicts: list[dict[str, torch.Tensor]]) -> list[dict[str, torch.T
     return [detach_dict(a_dict) for a_dict in dicts]
 
 
-def dict_to_device(a_dict: dict[str, object], device: torch.device) -> list[dict[str, object]]:
+def dict_to_device(a_dict: dict[str, object], device: torch.device) -> dict[str, object]:
     """Produce a new dict but with values that are tensors moved to device."""
     return {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in a_dict.items()}

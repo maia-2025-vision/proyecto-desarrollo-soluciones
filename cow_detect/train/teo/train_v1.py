@@ -86,8 +86,8 @@ class TrainCfg(BaseModel):
         ),
     ] = True
 
-    train_fraction: float
-    valid_fraction: float
+    train_fraction: float | None = None
+    valid_fraction: float | None = None
     data_loader: DataLoaderParams
     num_epochs: int
     optimizer: OptimizerParams
@@ -143,7 +143,7 @@ class Trainer:
                 predictions = model(images)
                 model.train()
 
-            mean_iou = calculate_iou(predictions, targets)
+            mean_iou, num_iou = calculate_iou(predictions, targets)
 
             self.optimizer.zero_grad()
             total_loss.backward()
@@ -154,7 +154,7 @@ class Trainer:
 
             pbar.set_description(
                 f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}"
-                f", avg.mean.iou={np.mean(train_ious):.4f}"
+                f", avg.mean.iou={np.mean(train_ious):.4f} num_iou={num_iou}"
             )
 
         avg_train_loss = np.mean(train_losses)
@@ -192,14 +192,14 @@ class Trainer:
                 except (KeyError, TypeError, ValueError, RuntimeError):
                     pprint(prediction_dicts)
                     raise
-                # predictions = model(images)
-                mean_iou: float = calculate_iou(prediction_dicts, targets)
+
+                mean_iou, num_iou = calculate_iou(prediction_dicts, targets)
 
                 valid_scores.append(avg_score)
                 valid_ious.append(mean_iou)
                 pbar.set_description(
                     f"Epoch {epoch}: Validation: avg.score={np.mean(valid_scores):.4f}"
-                    f", avg.mean.iou={np.mean(valid_ious):.4f}"
+                    f", avg.mean.iou={np.mean(valid_ious):.4f}, num_iou={num_iou}"
                 )
 
         avg_valid_score = np.mean(valid_scores)
