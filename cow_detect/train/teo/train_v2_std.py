@@ -314,7 +314,7 @@ def train_v2_std_cli(
 
     if train_data_fraction is not None:
         train_cfg.train_fraction = train_data_fraction
-        logger.info(f"Overriding {train_cfg.train_fraction=} (from CLI option)")
+        logger.info(f"Overriding {train_cfg.train_fraction=:.4f} (from CLI option)")
     assert (
         train_cfg.train_fraction is not None
     ), "train_data_fraction must be specified in config or as CLI option"
@@ -322,7 +322,7 @@ def train_v2_std_cli(
 
     if valid_data_fraction is not None:
         train_cfg.valid_fraction = valid_data_fraction
-        logger.info(f"Overriding {train_cfg.valid_fraction=}(from CLI option) ")
+        logger.info(f"Overriding {train_cfg.valid_fraction=:.4f} (from CLI option) ")
     assert (
         train_cfg.valid_fraction is not None
     ), "valid_data_fraction must be specified in config or as CLI option"

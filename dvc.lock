@@ -155,14 +155,13 @@ stages:
       md5: 5f049cb325d93a5fcdff29e1cc02d57f
       size: 38681
   eval-v1-sky2:
-    cmd: cow_detect/eval/evaluate.py  data/training/teo/v1/faster-rcnn/model.pth
-      data/standardized/sky.dataset2.jsonl --out 
-      data/evaluation/eval-v1-sky2.jsonl
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v1/faster-rcnn/model.pth 
+      data/standardized/sky.dataset2.jsonl --out data/evaluation/eval-v1-sky2
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: 845d5b541f547753c2864c243e2fcfa3
-      size: 5662
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -170,13 +169,14 @@ stages:
       size: 8766
     - path: data/training/teo/v1/faster-rcnn/model.pth
       hash: md5
-      md5: c4a1f407de6f5891ed3d12887b8f05d8
+      md5: a70730bcffda54ee5d5f539b06634057
       size: 165704279
     outs:
-    - path: data/evaluation/eval-v1-sky2.jsonl
+    - path: data/evaluation/eval-v1-sky2
       hash: md5
-      md5: 15840fba87e2836af774a746e154625e
-      size: 20850
+      md5: 25522be24f3b5b1b21c7491d9dd02d8d.dir
+      size: 36142
+      nfiles: 2
   std-sky-all:
     cmd: cat data/standardized/sky.dataset1.jsonl 
       data/standardized/sky.dataset2.jsonl  > data/standardized/sky.all.jsonl
@@ -289,3 +289,27 @@ stages:
       md5: 0e0bc9c45c8f77f91573cceb6a5723ef.dir
       size: 165705572
       nfiles: 3
+  eval-v2-sky1-over-sky2:
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v2-sky1/model.pth 
+      data/standardized/sky.dataset2.jsonl --out 
+      data/evaluation/eval-v2-sky1-over-sky2
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
+      isexec: true
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    - path: data/training/teo/v2-sky1/model.pth
+      hash: md5
+      md5: d990a62626435964246a497a3d694d2d
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v2-sky1-over-sky2
+      hash: md5
+      md5: 499ed57945ac226d966ffe3b9eefb93a.dir
+      size: 32586
+      nfiles: 2

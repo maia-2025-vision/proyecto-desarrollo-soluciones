@@ -7,6 +7,7 @@ from loguru import logger
 from PIL import Image
 from torch.utils.data import Dataset
 
+from cow_detect.train.types import Target
 from cow_detect.utils.standardize import Annot, AnnotatedImageRecord, AnnotationsFileInfo
 
 
@@ -71,7 +72,7 @@ class AnnotatedImagesDataset(Dataset):
         """Get the number of batches per epoch."""
         return int(math.ceil(len(self.records) / batch_size))
 
-    def __getitem__(self, idx: int) -> dict[str, torch.Tensor | Path | list[str]]:
+    def __getitem__(self, idx: int) -> Target:
         """Get the i-th image from this dataset as torch tensor along with its path."""
         img_path = self.records[idx].image.path
 

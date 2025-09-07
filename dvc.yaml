@@ -143,9 +143,22 @@ stages:
       cow_detect/eval/evaluate.py
       data/training/teo/v1/faster-rcnn/model.pth
       data/standardized/sky.dataset2.jsonl
-      --out data/evaluation/eval-v1-sky2.jsonl
+      --out data/evaluation/eval-v1-sky2
     deps:
     - cow_detect/eval/evaluate.py
     - data/training/teo/v1/faster-rcnn/model.pth
     - data/standardized/sky.dataset2.jsonl
-    outs: [data/evaluation/eval-v1-sky2.jsonl]
+    outs: [data/evaluation/eval-v1-sky2]
+
+  eval-v2-sky1-over-sky2:
+    # First example of evaluation on small dataset
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-sky1/model.pth
+      data/standardized/sky.dataset2.jsonl
+      --out data/evaluation/eval-v2-sky1-over-sky2
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-sky1/model.pth
+    - data/standardized/sky.dataset2.jsonl
+    outs: [data/evaluation/eval-v2-sky1-over-sky2]
