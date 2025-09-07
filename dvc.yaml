@@ -137,21 +137,35 @@ stages:
     outs:
       - data/training/teo/v1/faster-rcnn-toy/
 
-  eval-v1-sky2:
+  eval-v1-over-sky2:
     # First example of evaluation on small dataset
     cmd: >-
       cow_detect/eval/evaluate.py
       data/training/teo/v1/faster-rcnn/model.pth
       data/standardized/sky.dataset2.jsonl
-      --out data/evaluation/eval-v1-sky2
+      --out data/evaluation/eval-v1-over-sky2
     deps:
     - cow_detect/eval/evaluate.py
     - data/training/teo/v1/faster-rcnn/model.pth
     - data/standardized/sky.dataset2.jsonl
-    outs: [data/evaluation/eval-v1-sky2]
+    outs: [data/evaluation/eval-v1-over-sky2]
+
+  eval-v2-sky1-over-sky1:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-sky1/model.pth
+      data/standardized/sky.dataset1.jsonl
+      --out data/evaluation/eval-v2-sky1-over-sky1
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-sky1/model.pth
+    - data/standardized/sky.dataset1.jsonl
+    outs: [data/evaluation/eval-v2-sky1-over-sky1]
+
 
   eval-v2-sky1-over-sky2:
-    # First example of evaluation on small dataset
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
     cmd: >-
       cow_detect/eval/evaluate.py
       data/training/teo/v2-sky1/model.pth
@@ -162,3 +176,29 @@ stages:
     - data/training/teo/v2-sky1/model.pth
     - data/standardized/sky.dataset2.jsonl
     outs: [data/evaluation/eval-v2-sky1-over-sky2]
+
+  eval-v2-derval-over-mauron:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-derval/model.pth
+      data/standardized/icaerus.mauron.jsonl
+      --out data/evaluation/eval-v2-derval-over-mauron
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-derval/model.pth
+    - data/standardized/icaerus.mauron.jsonl
+    outs: [data/evaluation/eval-v2-derval-over-mauron]
+
+  eval-v2-derval-over-jalogny:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-derval/model.pth
+      data/standardized/icaerus.jalogny.jsonl
+      --out data/evaluation/eval-v2-derval-over-jalogny
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-derval/model.pth
+    - data/standardized/icaerus.jalogny.jsonl
+    outs: [data/evaluation/eval-v2-derval-over-jalogny]

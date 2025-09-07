@@ -148,7 +148,7 @@ def eval_on_whole_dataset(
 ) -> EvaluationResults:
     # Run evaluation on each image:
     predict_data_loader = DataLoader(
-        predict_ds, batch_size=batch_size, collate_fn=custom_collate_dicts
+        predict_ds, batch_size=batch_size, collate_fn=custom_collate_dicts, num_workers=0
     )
 
     all_eval_results: list[OneImageEvaluationResult] = []
