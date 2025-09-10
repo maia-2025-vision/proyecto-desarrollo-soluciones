@@ -1,9 +1,10 @@
+#!/usr/bin/env python
 import gc
-import json
 import os
 from hashlib import md5
 from pathlib import Path
 from pprint import pprint
+from typing import Annotated
 
 import mlflow
 import numpy as np
@@ -24,10 +25,11 @@ from torchvision.models.detection.faster_rcnn import (  # type: ignore[import-un
 from typer import Typer
 
 from cow_detect.datasets.sky_v1 import SkyDataset
+from cow_detect.train.train_utils import save_model_and_version
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
-from cow_detect.utils.metrics import calculate_iou
+from cow_detect.utils.metrics import mean_iou
 from cow_detect.utils.train import get_num_batches, train_validation_split
-from cow_detect.utils.versioning import get_cfg_hash, get_git_revision_hash
+from cow_detect.utils.versioning import get_git_revision_hash
 
 # %%
 
@@ -76,17 +78,30 @@ class TrainCfg(BaseModel):
     """Parameters fort training."""
 
     experiment_name: str
-    sort_paths: bool = Field(
-        True,
-        description="whether to sort paths from input dataset before splitting,"
-        "default true for greater reproducibility",
-    )
-    train_fraction: float
-    valid_fraction: float
+    sort_paths: Annotated[
+        bool,
+        Field(
+            description="whether to sort paths from input dataset before splitting,"
+            "default true for greater reproducibility",
+        ),
+    ] = True
+
+    train_fraction: float | None = None
+    valid_fraction: float | None = None
     data_loader: DataLoaderParams
     num_epochs: int
     optimizer: OptimizerParams
     device: str = "cpu"
+    num_classes: int = 2
+    key_metric: str = "mar_medium"
+    max_detection_thresholds: Annotated[
+        list[int],
+        Field(
+            default_factory=lambda: [5, 10, 25],
+            description="thresholds used for calculating mAR metrics,"
+            " needs to be limited to at most 3 elems...(bug in torchmetrics?)",
+        ),
+    ]
 
 
 class Trainer:
@@ -110,7 +125,7 @@ class Trainer:
     ) -> None:
         """Run loop over train data for one epoch."""
         train_losses = []
-        train_ious = []
+        batch_ious, batch_num_ious = [], []  # one per patch
 
         n_batches = get_num_batches(train_data_loader)
         pbar = tqdm.tqdm(train_data_loader, total=n_batches)
@@ -130,22 +145,23 @@ class Trainer:
                 predictions = model(images)
                 model.train()
 
-            mean_iou = calculate_iou(predictions, targets)
+            batch_mean_iou, batch_num_iou = mean_iou(predictions, targets)
+            batch_ious.append(batch_mean_iou)
+            batch_num_ious.append(batch_num_iou)
 
             self.optimizer.zero_grad()
             total_loss.backward()
             self.optimizer.step()
 
             train_losses.append(total_loss.detach().item())
-            train_ious.append(mean_iou)
 
-            pbar.set_description(
-                f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}"
-                f", avg.mean.iou={np.mean(train_ious):.4f}"
-            )
+            pbar.set_description(f"Epoch {epoch}: training: avg.loss={np.mean(train_losses):.4f}")
 
         avg_train_loss = np.mean(train_losses)
-        avg_train_iou = np.mean(train_ious)
+        # weighted average of batch ious
+        avg_train_iou = np.sum(np.array(batch_ious) * np.array(batch_num_ious)) / np.sum(
+            batch_num_ious
+        )
         mlflow.log_metric("avg_train_loss", float(avg_train_loss), step=epoch)
         mlflow.log_metric("avg_train_iou", float(avg_train_iou), step=epoch)
         logger.info(f"Epoch {epoch}: {avg_train_loss=:.4}, {avg_train_iou=:.4f}")
@@ -159,7 +175,7 @@ class Trainer:
         """Run loop over validation data after an epoch."""
         model.eval()
         valid_scores = []
-        valid_ious = []
+        valid_ious: list[float] = []  # one per batch
 
         n_batches = get_num_batches(valid_data_loader)
         with torch.no_grad():
@@ -179,14 +195,14 @@ class Trainer:
                 except (KeyError, TypeError, ValueError, RuntimeError):
                     pprint(prediction_dicts)
                     raise
-                # predictions = model(images)
-                mean_iou: float = calculate_iou(prediction_dicts, targets)
+
+                valid_mean_iou, num_iou = mean_iou(prediction_dicts, targets)
 
                 valid_scores.append(avg_score)
-                valid_ious.append(mean_iou)
+                valid_ious.append(valid_mean_iou)
                 pbar.set_description(
                     f"Epoch {epoch}: Validation: avg.score={np.mean(valid_scores):.4f}"
-                    f", avg.mean.iou={np.mean(valid_ious):.4f}"
+                    f", avg.mean.iou={np.mean(valid_ious):.4f}, num_iou={num_iou}"
                 )
 
         avg_valid_score = np.mean(valid_scores)
@@ -214,6 +230,7 @@ def train_faster_rcnn(
 
     logger.info(f"Using device={train_cfg.device} as specified in train_cfg.")
     device = torch.device(train_cfg.device)
+    assert train_cfg.valid_fraction is not None
 
     train_img_paths, valid_img_paths = train_validation_split(
         imgs_dir=train_data_path / "img",
@@ -306,18 +323,9 @@ def train_faster_rcnn(
 
     # Save the fine-tuned model
     if save_path is not None:
-        save_path.mkdir(parents=True, exist_ok=True)
-        torch.save(model.state_dict(), save_path / "model.pth")
-        (save_path / "train-config.yaml").write_text(yaml.dump(train_cfg))
-        (save_path / "versioning.txt").write_text(
-            json.dumps(
-                {
-                    "git_revision": git_revision,
-                    "cfg_hash": get_cfg_hash(train_cfg.model_dump_json()),
-                }
-            )
+        save_model_and_version(
+            model, train_cfg=train_cfg, git_revision=git_revision, save_path=save_path
         )
-        logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
 
 
 if __name__ == "__main__":

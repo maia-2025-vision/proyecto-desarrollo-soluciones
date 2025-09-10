@@ -1,24 +1,24 @@
 schema: '2.0'
 stages:
   train-v1:
-    cmd: python cow_detect/train/teo/train_v1.py --cfg 
+    cmd: cow_detect/train/teo/train_v1.py --cfg 
       cow_detect/train/teo/train_cfg_v1.yaml  --train-data data/sky/Dataset1 
       --save-path data/training/teo/v1/faster-rcnn/
     deps:
+    - path: cow_detect/train/teo/train_cfg_v1.yaml
+      hash: md5
+      md5: 2c7397fa13f9bd5d6c8fc0abe586b8a5
+      size: 911
     - path: data/sky/Dataset1
       hash: md5
       md5: b92f3590e07a3f9a6b62f17dde029e18.dir
       size: 3447187507
       nfiles: 1314
-    - path: cow_detect/train/teo/train_cfg_v1.yaml
-      hash: md5
-      md5: 8948953843eac91e564d88f411b5b12c
-      size: 230
     outs:
     - path: data/training/teo/v1/faster-rcnn/
       hash: md5
-      md5: 321c094af1b41f361e24a3961ede1959.dir
-      size: 165705359
+      md5: b27a7b663a47a0f521798e94c75ede4f.dir
+      size: 165705411
       nfiles: 3
   train-v1-toy:
     cmd: python cow_detect/train/teo/train_v1.py --cfg 
@@ -155,14 +155,13 @@ stages:
       md5: 5f049cb325d93a5fcdff29e1cc02d57f
       size: 38681
   eval-v1-sky2:
-    cmd: cow_detect/eval/evaluate.py  data/training/teo/v1/faster-rcnn/model.pth
-      data/standardized/sky.dataset2.jsonl --out 
-      data/evaluation/eval-v1-sky2.jsonl
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v1/faster-rcnn/model.pth 
+      data/standardized/sky.dataset2.jsonl --out data/evaluation/eval-v1-sky2
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: 845d5b541f547753c2864c243e2fcfa3
-      size: 5662
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -170,13 +169,14 @@ stages:
       size: 8766
     - path: data/training/teo/v1/faster-rcnn/model.pth
       hash: md5
-      md5: c4a1f407de6f5891ed3d12887b8f05d8
+      md5: a70730bcffda54ee5d5f539b06634057
       size: 165704279
     outs:
-    - path: data/evaluation/eval-v1-sky2.jsonl
+    - path: data/evaluation/eval-v1-sky2
       hash: md5
-      md5: 15840fba87e2836af774a746e154625e
-      size: 20850
+      md5: 25522be24f3b5b1b21c7491d9dd02d8d.dir
+      size: 36142
+      nfiles: 2
   std-sky-all:
     cmd: cat data/standardized/sky.dataset1.jsonl 
       data/standardized/sky.dataset2.jsonl  > data/standardized/sky.all.jsonl
@@ -222,3 +222,142 @@ stages:
       hash: md5
       md5: e29aaf920d9dda94957349045d719931
       size: 920471
+  train-v2-sky1:
+    cmd: python cow_detect/train/teo/train_v2_std.py --cfg 
+      cow_detect/train/teo/train_cfg_v2.yaml --device cpu --train-data 
+      data/standardized/sky.dataset1.jsonl --train-data-fraction 0.3 
+      --valid-data data/standardized/sky.dataset2.jsonl --valid-data-fraction 
+      1.0 --save-path data/training/teo/v2-sky1
+    deps:
+    - path: data/standardized/sky.dataset1.jsonl
+      hash: md5
+      md5: 314f57c2459eb37ce238aec6b38cb0ab
+      size: 350340
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    outs:
+    - path: data/training/teo/v2-sky1
+      hash: md5
+      md5: 86137c82e3edc51abe03b038a2de90d3.dir
+      size: 165705546
+      nfiles: 3
+  train-v2-toy:
+    cmd: python cow_detect/train/teo/train_v2_std.py --cfg 
+      cow_detect/train/teo/train_cfg_v2.yaml --device cpu --train-data 
+      data/standardized/sky.dataset1.jsonl --train-data-fraction 0.002 
+      --valid-data data/standardized/sky.dataset2.jsonl --valid-data-fraction 
+      0.2 --save-path data/training/teo/v2-sky1-toy
+    deps:
+    - path: data/standardized/sky.dataset1.jsonl
+      hash: md5
+      md5: 314f57c2459eb37ce238aec6b38cb0ab
+      size: 350340
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    outs:
+    - path: data/training/teo/v2-sky1-toy
+      hash: md5
+      md5: 0751bf4a1902e2e78b3e7c7a931b7c56.dir
+      size: 165705573
+      nfiles: 3
+  train-v2-derval:
+    cmd: python cow_detect/train/teo/train_v2_std.py --device cpu --cfg 
+      cow_detect/train/teo/train_cfg_v2.yaml --train-data 
+      data/standardized/icaerus.derval.jsonl --train-data-fraction 1.0 
+      --valid-data data/standardized/icaerus.jalogny.jsonl --valid-data-fraction
+      0.25 --save-path data/training/teo/v2-derval
+    deps:
+    - path: cow_detect/train/teo/train_cfg_v2.yaml
+      hash: md5
+      md5: 6f2f1188ff0cf5735248b1a20a32ec53
+      size: 275
+    - path: data/standardized/icaerus.derval.jsonl
+      hash: md5
+      md5: 9064a73cbaed6bcf0490c4305843c019
+      size: 71877
+    - path: data/standardized/icaerus.jalogny.jsonl
+      hash: md5
+      md5: da05ce1bbfdf24bf99b0554713d44d03
+      size: 327079
+    outs:
+    - path: data/training/teo/v2-derval
+      hash: md5
+      md5: 0e0bc9c45c8f77f91573cceb6a5723ef.dir
+      size: 165705572
+      nfiles: 3
+  eval-v2-sky1-over-sky2:
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v2-sky1/model.pth 
+      data/standardized/sky.dataset2.jsonl --out 
+      data/evaluation/eval-v2-sky1-over-sky2
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
+      isexec: true
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    - path: data/training/teo/v2-sky1/model.pth
+      hash: md5
+      md5: d990a62626435964246a497a3d694d2d
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v2-sky1-over-sky2
+      hash: md5
+      md5: 499ed57945ac226d966ffe3b9eefb93a.dir
+      size: 32586
+      nfiles: 2
+  eval-v2-derval-over-mauron:
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v2-derval/model.pth 
+      data/standardized/icaerus.mauron.jsonl --out 
+      data/evaluation/eval-v2-derval-over-mauron
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
+      isexec: true
+    - path: data/standardized/icaerus.mauron.jsonl
+      hash: md5
+      md5: e202ad08a9228693670c314d8342576e
+      size: 482834
+    - path: data/training/teo/v2-derval/model.pth
+      hash: md5
+      md5: 1b635bed4abbbbd9dcaf165b40deecce
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v2-derval-over-mauron
+      hash: md5
+      md5: 55ef12a380a1e3d53aaea28fdb87ae1d.dir
+      size: 160767
+      nfiles: 2
+  eval-v1-over-sky2:
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v1/faster-rcnn/model.pth 
+      data/standardized/sky.dataset2.jsonl --out 
+      data/evaluation/eval-v1-over-sky2
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: ff2f782c9396c1e54679186b37b16fed
+      size: 11218
+      isexec: true
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    - path: data/training/teo/v1/faster-rcnn/model.pth
+      hash: md5
+      md5: a70730bcffda54ee5d5f539b06634057
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v1-over-sky2
+      hash: md5
+      md5: 8bf91997ffdc02ec1413ab40e3236f4e.dir
+      size: 36144
+      nfiles: 2

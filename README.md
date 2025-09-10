@@ -140,4 +140,7 @@ https://docs.pytorch.org/vision/main/models/faster_rcnn.html
 
 # TODO:
 
+- [ ] Averiguar lo de iscrow que se menciona en la funcion de mean_average_precision de torchmetrics 
+y también se estaba poniendo en los diccionarios devueltos por datasetv1... 
 - [ ] Experiment freezing all parameters except final BoxPRedictor head...
+- [ ] Experiment with other optimizers

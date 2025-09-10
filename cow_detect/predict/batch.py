@@ -12,6 +12,7 @@ from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
+from cow_detect.train.types import Prediction, Target
 from cow_detect.utils.data import make_jsonifiable
 
 
@@ -111,7 +112,7 @@ class ImagesPredictDataset(Dataset):
 
 def get_prediction_model(weights_path: Path, model_type: str = "teo/v1") -> nn.Module:
     """Restore and return a prediction model from a weights file."""
-    if model_type == "teo/v1":
+    if model_type == "teo":
         from cow_detect.train.teo.train_v1 import get_model
 
         model = get_model(num_classes=2)
@@ -120,7 +121,7 @@ def get_prediction_model(weights_path: Path, model_type: str = "teo/v1") -> nn.M
         assert isinstance(model, nn.Module)
         return model
     else:
-        raise NotImplementedError(f"model_type={model_type} not implemented yet")
+        raise NotImplementedError(f"model_type=`{model_type}` not implemented yet")
 
 
 def custom_collate_fun(batch: list[tuple]) -> tuple[list, ...]:
@@ -233,6 +234,3 @@ def _interactive_testing() -> None:
     print(json.dumps(obj, indent=4))
 
     # %%
-
-
-# %%
