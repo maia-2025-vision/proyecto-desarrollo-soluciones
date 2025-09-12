@@ -21,6 +21,7 @@ from cow_detect.datasets.std import AnnotatedImagesDataset
 from cow_detect.train.teo.train_v1 import TrainCfg, get_model
 from cow_detect.train.train_utils import save_model_and_version
 from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable_singletons, zip_dict
+from cow_detect.utils.debug import summarize
 from cow_detect.utils.metrics import mean_iou
 from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
 from cow_detect.utils.pytorch import detach_dicts, dict_to_device
@@ -85,9 +86,10 @@ class TrainerV2:
             model.train()
             images = [image.to(self.device) for image in batch["image_pt"]]
             targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
-            targets = [dict_to_device(tgt, self.device) for tgt in targets]
-            all_targets.extend(targets)
+            all_targets.extend(targets) # cpu!
 
+            targets = [dict_to_device(tgt, self.device) for tgt in targets]
+            
             loss_dict = model(images, targets)
             total_loss: torch.Tensor = sum(loss for loss in loss_dict.values())
 
@@ -97,6 +99,8 @@ class TrainerV2:
                 predictions = detach_dicts(model(images))
                 all_predictions.extend(predictions)
                 model.train()
+
+            # print("all_preds",   summarize(all_predictions))
 
             running_train_iou, _ = mean_iou(all_predictions, all_targets)
             self.optimizer.zero_grad()

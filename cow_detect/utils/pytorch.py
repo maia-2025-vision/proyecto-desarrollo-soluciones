@@ -16,7 +16,7 @@ def auto_detect_device() -> torch.device:
 
 
 def detach_dict(a_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-    """Make sure all tensors in a tensor valued dict are detached."""
+    """Make sure all tensors in a tensor valued dict are detached and moved to cpu."""
     return {k: v.detach().cpu() for k, v in a_dict.items()}
 
 
