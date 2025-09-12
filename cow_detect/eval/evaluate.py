@@ -18,7 +18,6 @@ from torchmetrics.functional.detection import mean_average_precision
 
 import cow_detect.datasets.std as ds
 from cow_detect.predict.batch import get_prediction_model
-from cow_detect.utils.metrics import max_ious_for_preds
 from cow_detect.train.types import Prediction, Target
 from cow_detect.utils.data import (
     custom_collate_dicts,
@@ -26,6 +25,7 @@ from cow_detect.utils.data import (
     make_jsonifiable_singletons,
     zip_dict,
 )
+from cow_detect.utils.metrics import max_ious_for_preds
 
 reload(ds)
 
@@ -177,7 +177,9 @@ def eval_on_whole_dataset(
         itertools.chain.from_iterable(r.max_ious_for_preds for r in all_eval_results)
     )
     # print(list(all_max_ious_for_preds))
-    mean_max_ious = float(torch.mean(torch.tensor(all_max_ious_for_preds, dtype=torch.float32)).item())
+    mean_max_ious = float(
+        torch.mean(torch.tensor(all_max_ious_for_preds, dtype=torch.float32)).item()
+    )
     num_max_ious = len(all_max_ious_for_preds)
     total_detections = sum(len(r.prediction["boxes"]) for r in all_eval_results)
     assert num_max_ious == total_detections, f"{num_max_ious=} != {total_detections=}"

@@ -1,15 +1,16 @@
 import io
+from collections.abc import Callable
 from http import HTTPStatus
-from pathlib import Path
+from typing import TypedDict
 
 import requests
 import torch
-import torchvision.transforms as transforms
 from fastapi import APIRouter, HTTPException
 from loguru import logger
 from PIL import Image
+from torch import nn
 
-from api.types import (
+from api.req_resp_types import (
     PredictionError,
     PredictionResult,
     PredictManyRequest,
@@ -22,16 +23,20 @@ from api.utils import (
     list_flyover_folders,
     upload_json_to_s3,
 )
-from cow_detect.predict.batch import get_prediction_model
+
+
+class ModelPackType(TypedDict):
+    """Declare types for stuffed stored in model_pack global below."""
+
+    model: nn.Module
+    transform: Callable[[Image.Image], torch.Tensor]
+
+
+# This gets initialized in api.main.lifespan
+model_pack: ModelPackType = {}
+
 
 router = APIRouter()
-
-# Carga el modelo solo una vez
-model_weights_path = Path("data/training/teo/v1/faster-rcnn/model.pth")
-model = get_prediction_model(model_weights_path)
-model.eval()
-
-transform = transforms.ToTensor()
 
 
 def download_image_from_url(url: str):
@@ -66,7 +71,7 @@ def predict_one_endpoint(req: PredictOneRequest) -> PredictionResult:
     return predict_one(url=req.s3_path)
 
 
-def predict_one(url: str):
+def predict_one(url: str) -> PredictionResult:
     try:
         image = download_image_from_url(url)
     except Exception as e:
@@ -75,6 +80,8 @@ def predict_one(url: str):
             status=HTTPStatus.UNAUTHORIZED,
             error=f"No se pudo descargar o abrir la imagen: {str(e)}",
         )
+
+    transform, model = model_pack["transform"], model_pack["model"]
 
     image_tensor = transform(image).unsqueeze(0)  # batch size 1
 
@@ -105,7 +112,7 @@ def predict_one(url: str):
 
 
 @router.get("/flyovers/{farm}")
-def list_flyovers(farm: str):
+def list_flyovers(farm: str) -> dict[str, list[str]]:
     """Lista las carpetas de sobrevuelos disponibles para una granja específica."""
     try:
         folders = list_flyover_folders(farm)

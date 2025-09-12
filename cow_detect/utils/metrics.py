@@ -36,8 +36,6 @@ def max_ious_for_preds(preds: Prediction, target: Target) -> list[float]:
     If total number of predicted boxes is 0, return empty list.
     If target contains no boxes return a list of 0's of len len(preds["boxes").
     """
-    total_iou: float = 0.0
-
     pred_boxes = preds["boxes"]
     target_boxes = target["boxes"]
 
