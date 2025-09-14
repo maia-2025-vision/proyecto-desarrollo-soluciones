@@ -344,8 +344,8 @@ stages:
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: ff2f782c9396c1e54679186b37b16fed
-      size: 11218
+      md5: 76a0f08d198035a3cc4e16a961950fe1
+      size: 11302
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -353,11 +353,11 @@ stages:
       size: 8766
     - path: data/training/teo/v1/faster-rcnn/model.pth
       hash: md5
-      md5: a70730bcffda54ee5d5f539b06634057
+      md5: d31635a041c10e013c94c1bcdb4327ff
       size: 165704279
     outs:
     - path: data/evaluation/eval-v1-over-sky2
       hash: md5
-      md5: 8bf91997ffdc02ec1413ab40e3236f4e.dir
-      size: 36144
+      md5: 006454035ed49c7423c118775c8037b4.dir
+      size: 36475
       nfiles: 2
