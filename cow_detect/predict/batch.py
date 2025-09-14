@@ -110,12 +110,13 @@ class ImagesPredictDataset(Dataset):
         return image_tensor, img_path, error
 
 
-def get_prediction_model(weights_path: Path, model_type: str = "teo/v1") -> nn.Module:
+def get_prediction_model(weights_path: Path, model_type: str = "teo") -> nn.Module:
     """Restore and return a prediction model from a weights file."""
     if model_type == "teo":
         from cow_detect.train.teo.train_v1 import get_model
 
         model = get_model(num_classes=2)
+        logger.info(f"Loading weights from: {weights_path}")
         state_dict = torch.load(weights_path)
         model.load_state_dict(state_dict)
         assert isinstance(model, nn.Module)

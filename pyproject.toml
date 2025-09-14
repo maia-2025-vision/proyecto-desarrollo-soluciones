@@ -55,7 +55,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 # qué directorios de código incluir al instalar este projecto como un paquete
-packages = ["cow_detect"]
+packages = ["cow_detect", "api"]
 
 
 
@@ -143,10 +143,30 @@ cmd="python cow_detect/utils/annotations.py data/sky/Dataset1/ann/"
 help="Test annots parsing over all annotations of Sky Dataset 2"
 cmd="python cow_detect/utils/annotations.py data/sky/Dataset2/ann/"
 
+[tool.poe.tasks.serve-default-model]
+help="Start the prediction API service with default model (set as MODEL_PATH by this command)"
+env={ MODEL_PATH = "data/training/teo/v1/faster-rcnn/model.pth" }
+cmd="python api/run_api.py"
+
 [tool.poe.tasks.serve]
-help="Start the prediction API service"
+help="Start the prediction API service, MODEL_PATH needs set by caller first"
 cmd="python api/run_api.py"
 
 [tool.poe.tasks.dashboard]
 help="Start the streamlit dashboard"
 shell="AWS_PROFILE=dvc-user uv run streamlit run streamlit_app.py"
+
+[tool.poe.tasks.dockerize-api]
+help="Package the API in as a docker image"
+shell="docker build --progress=plain -t cowd-api -f api/Dockerfile  ."
+
+
+[tool.poe.tasks.docker-run-api-aws-prof]
+help="Run API with docker sharing local AWS profile and mounting credentials in containers /root/.aws "
+env={ AWS_PROFILE='dvc-user' }
+shell="docker run -p 8000:8000 -e AWS_PROFILE=$AWS_PROFILE -v $HOME/.aws:/root/.aws cowd-api"
+
+
+[tool.poe.tasks.docker-run-api-aws-creds]
+help="Run API with docker assuming AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are provided in the environment"
+shell="docker run -v $HOME/.aws:/root/.aws cowd-api"
