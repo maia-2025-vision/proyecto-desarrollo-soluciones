@@ -1,5 +1,4 @@
 experiment_name: "faster-rcnn-v3"
-device: "cuda"
 num_epochs: 15
 data_root_dir: "data/sky/Dataset1"
 # sort_paths: false means we will load images
@@ -16,8 +15,6 @@ data_root_dir: "data/sky/Dataset1"
 # model performance on a separate test dataset.
 sort_paths: false
 # sort_paths: true # new versions should set it to true!
-train_fraction: 1.0
-valid_fraction: 0.1
 data_loader:
   batch_size: 2
   data_shuffle: true

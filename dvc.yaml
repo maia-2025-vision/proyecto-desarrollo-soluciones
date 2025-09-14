@@ -137,6 +137,22 @@ stages:
     outs:
       - data/training/teo/v1/faster-rcnn-toy/
 
+  train-v3-sky1:
+    cmd: >-
+      python cow_detect/train/teo/train_v2_std.py
+      --cfg cow_detect/train/teo/train_cfg_v3.yaml
+      --device cuda
+      --train-data data/standardized/sky.dataset1.jsonl
+      --train-data-fraction 1.0
+      --valid-data data/standardized/sky.dataset2.jsonl
+      --valid-data-fraction 1.0
+      --save-path data/training/teo/v3-sky1
+    deps:
+      - data/standardized/sky.dataset1.jsonl
+      - data/standardized/sky.dataset2.jsonl
+    outs:
+      - data/training/teo/v3-sky1
+
   eval-v1-over-sky2:
     # First example of evaluation on small dataset
     cmd: >-
