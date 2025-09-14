@@ -88,7 +88,7 @@ class TrainerV2:
     ) -> None:
         """Run loop over train data for one epoch."""
         train_losses = []  # one per batch
-        all_targets_wo_imgs: list[dict] = []
+        all_targets: list[dict] = []
         all_predictions: list[dict] = []
 
         n_batches = get_num_batches(self.train_data_loader)
@@ -100,7 +100,7 @@ class TrainerV2:
             images = [image.to(self.device) for image in batch["image_pt"]]
             targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
             targets_wo_imgs = [remove_keys(a_dict, "image_pt") for a_dict in targets ]
-            all_targets_wo_imgs.extend(targets_wo_imgs) # cpu!
+            all_targets.extend(targets_wo_imgs) # cpu!
 
             targets = [dict_to_device(tgt, self.device) for tgt in targets]
             
