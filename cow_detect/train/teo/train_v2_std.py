@@ -30,6 +30,18 @@ from cow_detect.utils.versioning import get_git_revision_hash
 
 cli = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
 
+import os
+import psutil
+
+def get_process_memory_info_mb():
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    return mem_info.rss / (2 ** 20) # Resident Set Size (physical memory used)
+
+
+def remove_keys(a_dict: dict[str, object], *keys: str) -> dict[str, object]:
+    return {k: v for k, v in a_dict.items() if k not in set(keys)}
+
 
 class TrainerV2:
     """Provides more ergonomic training and validation loops.
@@ -76,17 +88,19 @@ class TrainerV2:
     ) -> None:
         """Run loop over train data for one epoch."""
         train_losses = []  # one per batch
-        all_targets: list[dict] = []
+        all_targets_wo_imgs: list[dict] = []
         all_predictions: list[dict] = []
 
         n_batches = get_num_batches(self.train_data_loader)
-        pbar = tqdm.tqdm(self.train_data_loader, total=n_batches)
-        for batch in pbar:
+        # pbar = tqdm.tqdm(self.train_data_loader, total=n_batches)
+        for i, batch in enumerate(self.train_data_loader):
             # pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
+            logger.info(f"Batch {i}: {get_process_memory_info_mb():.1f} MB")
             model.train()
             images = [image.to(self.device) for image in batch["image_pt"]]
             targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
-            all_targets.extend(targets) # cpu!
+            targets_wo_imgs = [remove_keys(a_dict, "image_pt") for a_dict in targets ]
+            all_targets_wo_imgs.extend(targets_wo_imgs) # cpu!
 
             targets = [dict_to_device(tgt, self.device) for tgt in targets]
             
@@ -109,10 +123,10 @@ class TrainerV2:
 
             train_losses.append(total_loss.detach().item())
 
-            pbar.set_description(
-                f"Epoch {epoch}: training: mean.loss={np.mean(train_losses):.4f}, "
-                f"mean.train.iou={running_train_iou:.4f}"
-            )
+            # pbar.set_description(
+            #    f"Epoch {epoch}: training: mean.loss={np.mean(train_losses):.4f}, "
+            #    f"mean.train.iou={running_train_iou:.4f}"
+            # )
 
         mapr_metrics_raw = mean_average_precision(  # type: ignore[arg-type]
             preds=all_predictions,
