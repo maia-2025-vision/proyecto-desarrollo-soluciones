@@ -29,7 +29,10 @@ def parse_s3_url(url: str) -> tuple[str, str]:
 def download_file_from_s3(url: str) -> bytes:
     bucket, key = parse_s3_url(url)
     response = s3_client.get_object(Bucket=bucket, Key=key)
-    return response["Body"].read()
+    resp_content = response["Body"].read()
+    assert isinstance(resp_content, bytes), f"{type(resp_content)=}"
+
+    return resp_content
 
 
 def upload_json_to_s3(prediction: dict, image_url: str):

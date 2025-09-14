@@ -6,7 +6,7 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset
 
-from cow_detect.train.teo.ds_v1 import TargetType
+from cow_detect.datasets.sky_v1 import TargetType
 from cow_detect.utils.annotations import parse_json_annotations_file
 
 TransformType: type = Callable[[Image.Image, TargetType], tuple[torch.Tensor, TargetType]]

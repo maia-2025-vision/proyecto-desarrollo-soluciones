@@ -16,3 +16,4 @@ class OptimizerParams(BaseModel):
     learning_rate: float
     momentum: float
     weight_decay: float
+    optimizer_class: str = "SGD"

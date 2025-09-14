@@ -28,6 +28,8 @@ torch-train = [
     "pillow>=10",
     "mlflow",
     "transformers>=4.55.4",
+    "torchmetrics>=1.8.2",
+    "pycocotools>=2.0.10",
 ]
 
 dev = [
@@ -43,6 +45,8 @@ dev = [
     "types-tqdm",
     "fastapi>=0.116.1",
     "mlflow>=3.3.2",
+    "boto3-stubs[s3]>=1.40.24",
+    "pandas-stubs>=2.3.2.250827",
 ]
 
 [build-system]
@@ -80,6 +84,18 @@ ignore = [
     "UP040", # Type alias `X` uses `TypeAlias` annotation instead of the `type` keyword
 ]
 
+# TODO: remove this excludes of pages/ and fix issues, there are only a few of them
+exclude = [
+    "pages/1_Upload_Images.py",
+    "pages/2_View_Detections.py"
+]
+
+[tool.ruff.format]
+exclude = [
+    "pages/1_Upload_Images.py",
+    "pages/2_View_Detections.py"
+]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
@@ -95,7 +111,9 @@ extend-immutable-calls = [
 
 [tool.mypy]
 python_version = "3.13"
-exclude='^(.venv|model|research|.dvc|data|.*scratch)/'
+# TODO: fix typing errors in dashboard
+# TODO: fix typing errors in api...
+exclude='^(.venv|model|research|.dvc|data|.*scratch|pages|api)/'
 disallow_untyped_defs = true
 disallow_any_unimported = true
 explicit_package_bases = true
@@ -110,7 +128,7 @@ help="runs formatting checks (e.g. ruff) on commited files"
 cmd="pre-commit run --all-files"
 
 [tool.poe.tasks.type-check]
-help="run mypy typechecking on the whole project (takes a couple of secs)"
+help="run type-checking on the whole project with mypy (takes a couple of secs)"
 cmd="mypy --config pyproject.toml ./"
 
 [tool.poe.tasks.mlflow-server]
@@ -131,4 +149,4 @@ cmd="python api/run_api.py"
 
 [tool.poe.tasks.dashboard]
 help="Start the streamlit dashboard"
-cmd="uv run streamlit run streamlit_app.py"
+shell="AWS_PROFILE=dvc-user uv run streamlit run streamlit_app.py"

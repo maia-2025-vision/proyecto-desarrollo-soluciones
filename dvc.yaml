@@ -1,50 +1,204 @@
 # schema: "2.0"
 stages:
+  std-sky-ds1:
+    cmd: >-
+      cow_detect/utils/standardize.py
+      data/sky/Dataset1 --kind sky --out data/standardized/sky.dataset1.jsonl
+    deps: [cow_detect/utils/standardize.py, data/sky/Dataset1]
+    outs: [data/standardized/sky.dataset1.jsonl]
+
+  std-sky-ds2:
+    cmd: >-
+      cow_detect/utils/standardize.py
+      data/sky/Dataset2 --kind sky --out data/standardized/sky.dataset2.jsonl
+    deps: [data/sky/Dataset2, cow_detect/utils/standardize.py]
+    outs: [data/standardized/sky.dataset2.jsonl]
+
+  std-sky-all:
+    cmd: >-
+      cat data/standardized/sky.dataset1.jsonl data/standardized/sky.dataset2.jsonl  >
+      data/standardized/sky.all.jsonl
+    deps: [data/standardized/sky.dataset1.jsonl, 
+        data/standardized/sky.dataset2.jsonl]
+    outs: [data/standardized/sky.all.jsonl]
+
+  std-icaerus-derval:
+    cmd: >-
+      cow_detect/utils/standardize.py
+      data/icaerus/Derval --kind icaerus --out data/standardized/icaerus.derval.jsonl
+    deps: [data/icaerus/Derval, cow_detect/utils/standardize.py]
+    outs: [data/standardized/icaerus.derval.jsonl]
+
+  std-icaerus-jalogny:
+    cmd: >-
+      cow_detect/utils/standardize.py
+      data/icaerus/Jalogny --kind icaerus --out data/standardized/icaerus.jalogny.jsonl
+    deps: [data/icaerus/Jalogny, cow_detect/utils/standardize.py]
+    outs: [data/standardized/icaerus.jalogny.jsonl]
+
+  std-icaerus-mauron:
+    cmd: >-
+      cow_detect/utils/standardize.py
+      data/icaerus/Mauron --kind icaerus --out data/standardized/icaerus.mauron.jsonl
+    deps: [data/icaerus/Mauron, cow_detect/utils/standardize.py]
+    outs: [data/standardized/icaerus.mauron.jsonl]
+
+  std-icaerus-other:
+    cmd: >-
+      python cow_detect/utils/standardize.py
+      data/icaerus/Other_farms --kind icaerus --out data/standardized/icaerus.other.jsonl
+    deps: [cow_detect/utils/standardize.py, data/icaerus/Other_farms]
+    outs: [data/standardized/icaerus.other.jsonl]
+
+  std-icaerus-all:
+    cmd: >-
+      cat
+      data/standardized/icaerus.derval.jsonl
+      data/standardized/icaerus.jalogny.jsonl
+      data/standardized/icaerus.mauron.jsonl
+      data/standardized/icaerus.other.jsonl
+      > data/standardized/icaerus.all.jsonl
+    deps: [data/standardized/icaerus.derval.jsonl, 
+        data/standardized/icaerus.jalogny.jsonl, 
+        data/standardized/icaerus.mauron.jsonl, 
+        data/standardized/icaerus.other.jsonl]
+    outs: [data/standardized/icaerus.all.jsonl]
+
   train-v1:
     cmd: >-
       python cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_v1.yaml 
-      --train-data data/sky/Dataset1
+      --cfg cow_detect/train/teo/train_cfg_v1.yaml  --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn/
     deps:
-      - cow_detect/train/teo/train_cfg_v1.yaml
-      - data/sky/Dataset1
+    - cow_detect/train/teo/train_cfg_v1.yaml
+    - data/sky/Dataset1
     outs:
-      - data/training/teo/v1/faster-rcnn/
+    - data/training/teo/v1/faster-rcnn/
 
-  train-v11:
+  train-v2-sky1:
     cmd: >-
-      python cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_v11.yaml 
-      --train-data data/sky/Dataset1
-      --save-path data/training/teo/v11/faster-rcnn/
+      python cow_detect/train/teo/train_v2_std.py
+      --cfg cow_detect/train/teo/train_cfg_v2.yaml
+      --device cpu
+      --train-data data/standardized/sky.dataset1.jsonl
+      --train-data-fraction 0.3
+      --valid-data data/standardized/sky.dataset2.jsonl
+      --valid-data-fraction 1.0
+      --save-path data/training/teo/v2-sky1
     deps:
-      - cow_detect/train/teo/train_cfg_v11.yaml
-      - data/sky/Dataset1
+      - data/standardized/sky.dataset1.jsonl
+      - data/standardized/sky.dataset2.jsonl
     outs:
-      - data/training/teo/v11/faster-rcnn/
+      - data/training/teo/v2-sky1
 
-  train-v12:
+  train-v2-toy:
     cmd: >-
-      python cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_v12.yaml 
-      --train-data data/sky/Dataset1
-      --save-path data/training/teo/v12/faster-rcnn/
+      python cow_detect/train/teo/train_v2_std.py
+      --cfg cow_detect/train/teo/train_cfg_v2.yaml
+      --device cpu
+      --train-data data/standardized/sky.dataset1.jsonl
+      --train-data-fraction 0.002
+      --valid-data data/standardized/sky.dataset2.jsonl
+      --valid-data-fraction 0.2
+      --save-path data/training/teo/v2-sky1-toy
     deps:
-      - cow_detect/train/teo/train_cfg_v12.yaml
-      - data/sky/Dataset1
+      - cow_detect/train/teo/train_cfg_v2.yaml
+      - data/standardized/sky.dataset1.jsonl
+      - data/standardized/sky.dataset2.jsonl
     outs:
-      - data/training/teo/v12/faster-rcnn/
+      - data/training/teo/v2-sky1-toy
 
+
+  train-v2-derval:
+    cmd: >-
+      python cow_detect/train/teo/train_v2_std.py
+      --device cpu
+      --cfg cow_detect/train/teo/train_cfg_v2.yaml
+      --train-data data/standardized/icaerus.derval.jsonl
+      --train-data-fraction 1.0
+      --valid-data data/standardized/icaerus.jalogny.jsonl
+      --valid-data-fraction 0.25
+      --save-path data/training/teo/v2-derval
+    deps:
+      - cow_detect/train/teo/train_cfg_v2.yaml
+      - data/standardized/icaerus.derval.jsonl
+      - data/standardized/icaerus.jalogny.jsonl
+    outs:
+      - data/training/teo/v2-derval
 
   train-v1-toy:
     cmd: >-
-      python cow_detect/train/teo/train_v1.py
-      --cfg cow_detect/train/teo/train_cfg_toy.yaml 
-      --train-data data/sky/Dataset1
+      cow_detect/train/teo/train_v1.py
+      --cfg cow_detect/train/teo/train_cfg_toy.yaml  --train-data data/sky/Dataset1
       --save-path data/training/teo/v1/faster-rcnn-toy/
     deps:
       - cow_detect/train/teo/train_cfg_toy.yaml
       - data/sky/Dataset1
     outs:
       - data/training/teo/v1/faster-rcnn-toy/
+
+  eval-v1-over-sky2:
+    # First example of evaluation on small dataset
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v1/faster-rcnn/model.pth
+      data/standardized/sky.dataset2.jsonl
+      --out data/evaluation/eval-v1-over-sky2
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v1/faster-rcnn/model.pth
+    - data/standardized/sky.dataset2.jsonl
+    outs: [data/evaluation/eval-v1-over-sky2]
+
+  eval-v2-sky1-over-sky1:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-sky1/model.pth
+      data/standardized/sky.dataset1.jsonl
+      --out data/evaluation/eval-v2-sky1-over-sky1
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-sky1/model.pth
+    - data/standardized/sky.dataset1.jsonl
+    outs: [data/evaluation/eval-v2-sky1-over-sky1]
+
+
+  eval-v2-sky1-over-sky2:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-sky1/model.pth
+      data/standardized/sky.dataset2.jsonl
+      --out data/evaluation/eval-v2-sky1-over-sky2
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-sky1/model.pth
+    - data/standardized/sky.dataset2.jsonl
+    outs: [data/evaluation/eval-v2-sky1-over-sky2]
+
+  eval-v2-derval-over-mauron:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-derval/model.pth
+      data/standardized/icaerus.mauron.jsonl
+      --out data/evaluation/eval-v2-derval-over-mauron
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-derval/model.pth
+    - data/standardized/icaerus.mauron.jsonl
+    outs: [data/evaluation/eval-v2-derval-over-mauron]
+
+  eval-v2-derval-over-jalogny:
+    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
+    cmd: >-
+      cow_detect/eval/evaluate.py
+      data/training/teo/v2-derval/model.pth
+      data/standardized/icaerus.jalogny.jsonl
+      --out data/evaluation/eval-v2-derval-over-jalogny
+    deps:
+    - cow_detect/eval/evaluate.py
+    - data/training/teo/v2-derval/model.pth
+    - data/standardized/icaerus.jalogny.jsonl
+    outs: [data/evaluation/eval-v2-derval-over-jalogny]

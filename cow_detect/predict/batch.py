@@ -5,20 +5,19 @@ from collections import Counter
 from pathlib import Path
 
 import torch
-import torchvision
-
-# from cow_detect.utils.debug import summarize
+import torchvision  # type: ignore[import-untyped]
 import tqdm
 from loguru import logger
 from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from cow_detect.utils.debug import summarize
+from cow_detect.train.types import Prediction, Target
+from cow_detect.utils.data import make_jsonifiable
 
 
 class ImagesPredictDataset(Dataset):
-    """Dataset class used for prediction."""
+    """Dataset class used for prediction/inference."""
 
     def __init__(
         self,
@@ -27,13 +26,13 @@ class ImagesPredictDataset(Dataset):
         force_resize: bool = True,
         limit: None | int = None,
     ) -> None:
-        """A torch dataset that provides images as tensors together with their paths.
+        """A torch dataset that provides tuples (images: tensor, path: Path).
 
         :param root_dir: Directory to find images (recursively)
         :param extensions: Valid image extensions
-        :param force_resize: Whether to force resize of images to
-        :param limit: If not None, limit to this maximum number of images
-                      to return (for quicker testing)
+        :param force_resize: Whether to force resize of images to size of first image read
+        :param limit: If not None, limit to this maximum number of images to return
+           (for quicker testing)
         """
         self.root_dir = root_dir
         # self.transforms = transforms
@@ -54,8 +53,8 @@ class ImagesPredictDataset(Dataset):
             self.image_paths = self.image_paths[:limit]
 
         self.img_to_tensor = torchvision.transforms.ToTensor()
-        self.target_size = None
-        self.force_resize = force_resize
+        self.target_size: tuple[int, int] | None = None
+        self.force_resize: bool = force_resize
 
     def __len__(self) -> int:
         """Get the length of the dataset."""
@@ -66,10 +65,10 @@ class ImagesPredictDataset(Dataset):
         return int(math.ceil(len(self.image_paths) / batch_size))
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, Path, str | None]:
-        """Get the i-th image item this dataset.
+        """Get the i-th tuple (image, path, error).
 
-        This will be a tuple of an image (as a torch tensor), along with its path
-        and possibly an error.
+        image will be a torch tensor of shape (3, W, H)
+        Error will be not None if image is not found or is unreadable by PIL.
         """
         img_path = self.image_paths[idx]
         # This simple rule works for SKY but it doesnt work for ICAERUS
@@ -77,7 +76,6 @@ class ImagesPredictDataset(Dataset):
         error: str | None = None  # only set if we fail to load the imge
         try:
             image = Image.open(img_path).convert("RGB")
-            # original_size = image.size
             if self.target_size is None:
                 self.target_size = image.size
                 logger.info(
@@ -92,8 +90,8 @@ class ImagesPredictDataset(Dataset):
                         logger.warning(
                             f"Image loaded from {img_path!s} has size {image.size} "
                             f"which differs from {self.target_size}. "
-                            f"If you are processing batches of size > 1, this will"
-                            " cause an error downstream."
+                            f"If you are processing batches of size > 1, "
+                            f"this will cause an error downstream."
                         )
 
         except OSError as err:
@@ -106,55 +104,44 @@ class ImagesPredictDataset(Dataset):
             # original_size = None
             error = str(err)
 
-        # processing_size = image.size
         image_tensor = self.img_to_tensor(image)
         del image
 
         return image_tensor, img_path, error
-        # return {
-        #     "image_tensor": image_tensor,
-        #     "image_path": img_path,
-        #     "image_original_size": original_size,
-        #     "image_processing_size": processing_size,
-        #     "error": error,
-        # }
 
 
 def get_prediction_model(weights_path: Path, model_type: str = "teo/v1") -> nn.Module:
-    if model_type == "teo/v1":
+    """Restore and return a prediction model from a weights file."""
+    if model_type == "teo":
         from cow_detect.train.teo.train_v1 import get_model
 
         model = get_model(num_classes=2)
         state_dict = torch.load(weights_path)
         model.load_state_dict(state_dict)
+        assert isinstance(model, nn.Module)
         return model
     else:
-        raise NotImplementedError(f"model_type={model_type} not implemented yet")
+        raise NotImplementedError(f"model_type=`{model_type}` not implemented yet")
 
 
-def custom_collate_fun(batch: list[dict]):
-    # print("input to collate:\n", summarize(batch))
-    return tuple(zip(*batch, strict=True))
+def custom_collate_fun(batch: list[tuple]) -> tuple[list, ...]:
+    """Given a list of tuples, build a tuple of lists.
 
-
-# def custom_collate_fun(batch: list[dict]):
-#     print("input to collate:\n", summarize(batch))
-#     # ret = tuple(zip(*batch, strict=True))
-#     print("\n\noutput from collate:\n", summarize(batch))
-#     return {
-#         "images_tensor": torch.vstack([d["image_tensor"] for d in batch]),
-#         "image_paths": [d["image_path"] for d in batch],
-#         "errors": [d["image_path"] for d in batch],
-#     }
-
-
-def _make_jsonifiable(record: dict[str, torch.Tensor]) -> dict[str, list]:
-    return {k: v.tolist() for k, v in record.items()}
+    E.g.
+    custom_collate_fun([(1, "a", tensor1), (3, "b", tensor2)])
+    == ([1, 2], ["a", "b"], [tensor1, tensor2])
+    """
+    return tuple(zip(*batch, strict=True))  # type: ignore[arg-type]  #  mypy false positive, this works
 
 
 def predict_one_batch(
     batch: tuple[torch.Tensor, list[Path], list[str | None]], model: nn.Module
 ) -> list[dict]:
+    """Run prediction on a single batch of images.
+
+    Return a list of records with the same size as the batch,
+    each containing predictions for one image, plus some stats.
+    """
     images_tensor, image_paths, errors = batch
     # images_tensor, image_paths, errors = (
     #     batch["images_tensor"], batch["image_paths"], batch["errors"]
@@ -174,7 +161,7 @@ def predict_one_batch(
         avg_score = prediction["scores"].mean().item()
         counts_by_label = dict(Counter(prediction["labels"].tolist()))
 
-        prediction_json = _make_jsonifiable(prediction)
+        prediction_json = make_jsonifiable(prediction)
         output_record = {
             "image_path": str(image_path),
             "total_detections": total_detections,
@@ -198,6 +185,11 @@ def predict_from_path_by_batches(
     batch_size: int = 1,
     limit: None | int = None,
 ) -> None:
+    """Run model inference on the given model on an image path.
+
+    This is meant for pure inference, images are NOT assumed
+    to have ground truth annotations.
+    """
     predict_ds = ImagesPredictDataset(images_path, limit=limit)
     model = get_prediction_model(model_weights, model_type=model_type)
     model.eval()
@@ -218,8 +210,7 @@ def predict_from_path_by_batches(
                     file_out.write(json.dumps(record) + "\n")
 
 
-# %%
-def _interactive_testing_():
+def _interactive_testing() -> None:
     # %%
     predict_from_path_by_batches(
         images_path=Path("data/sky/Dataset1"),
@@ -231,19 +222,15 @@ def _interactive_testing_():
     )
     # %%
     example_output = """
-        {"image_path": "data/sky/Dataset2/img/DJI_0036.JPG", "total_detections": 3,
-        "counts_by_label": {"1": 3},
+        {"image_path": "data/sky/Dataset2/img/DJI_0036.JPG",
+        "total_detections": 3, "counts_by_label": {"1": 3},
         "avg_score": 0.9464678168296814, "prediction": {
-        "boxes": [[587.2669677734375, 1636.1265869140625, 686.401123046875, 1731.468017578125],
-                  [761.794189453125, 2817.29345703125, 854.7379150390625, 2952.552490234375],
-                  [315.4936828613281, 2670.287841796875, 419.01641845703125, 2742.505615234375]],
-                    "labels": [1, 1, 1],
+        "boxes": [[587.2669, 1636.12, 686.40112, 1731.46801],
+                  [761, 2817.293125, 854.7379150390625, 2952.552490234375],
+                  [315.49368, 2670.287841, 419.01643125, 2742.505615234375]], "labels": [1, 1, 1],
         "scores": [0.996434211730957, 0.9948186278343201, 0.8481504917144775]}, "error": null}
     """
     obj = json.loads(example_output)
     print(json.dumps(obj, indent=4))
 
     # %%
-
-
-# %%

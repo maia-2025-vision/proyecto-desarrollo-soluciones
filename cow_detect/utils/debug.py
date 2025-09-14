@@ -7,7 +7,7 @@ def summarize_lines(obj: object, depth: int = 0, pretty: bool = True) -> list[De
     """Produce lines summarizing and object."""
     if isinstance(obj, torch.Tensor):
         shape_str = " x ".join(str(dim) for dim in tuple(obj.shape))
-        return [(depth, f"Tensor[{shape_str}]")]
+        return [(depth, f"Tensor[{shape_str}] (device={obj.device})")]
 
     elif isinstance(obj, dict):
         ret = [(depth, f"Dict[{len(obj)}](")]

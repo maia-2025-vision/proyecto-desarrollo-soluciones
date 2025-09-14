@@ -14,7 +14,7 @@ https://docs.astral.sh/uv/getting-started/installation/
 uv python install
 
 # instala las dependencias del grupo [dev] definidas en pyproject.toml
-uv sync --native-tls --dev
+uv sync --all-extras
 source .venv/bin/activate
 ```
 
@@ -32,6 +32,19 @@ pre-commit install
 dvc pull  # .venv debe estar activado
 ```
 
+## (Re)Generar conjuntos de datos standarizados
+
+Toma unos tres minutos:
+```bash
+dvc repro -s std-sky-ds1    
+dvc repro -s std-sky-ds2
+dvc repro -s std-sky-all
+dvc repro -s std-icaerus-derval
+dvc repro -s std-icaerus-jalogny
+dvc repro -s std-icaerus-mauron
+dvc repro -s std-icaerus-other
+dvc repro -s std-icaerus-all
+```
 
 ## Entrenamiento
 
@@ -65,15 +78,27 @@ Este proyecto incluye una aplicación web Streamlit para cargar imágenes a S3 y
 
 ### Ejecutar la Aplicación Streamlit
 
-```bash
-# Asegurarse de que las dependencias estén instaladas
-uv sync --native-tls
+Este proyecto utiliza [Poe the Poet](https://github.com/nat-n/poe-the-poet) para gestionar y ejecutar tareas de forma consistente.
 
-# Ejecutar la aplicación streamlit
-uv run streamlit run streamlit_app.py
-```
+1.  **Instalar dependencias:**
+    Asegúrate de tener todas las dependencias instaladas, con el siguiente comando:
+    
+    ```bash
+    uv sync --all-extras
+    ```
+    
 
-La aplicación estará disponible en `http://localhost:8501`
+2.  **Configurar credenciales de AWS:**
+    La aplicación necesita acceso a S3. Asegúrate de haber configurado tu perfil de AWS (`aws configure`). La tarea de Poe está configurada para usar el perfil llamado `dvc-user`.
+
+3.  **Ejecutar la aplicación:**
+    Para iniciar la aplicación Streamlit, ejecuta el siguiente comando:
+    
+    ```bash
+    poe dashboard
+    ```
+    
+    Este comando se encargará de establecer la variable de entorno `AWS_PROFILE=dvc-user` y lanzar la aplicación, que estará disponible en `http://localhost:8501`.
 
 ### Características
 
@@ -94,9 +119,28 @@ La aplicación tiene dos páginas:
 
 Antes de usar la función de carga:
 - Configurar credenciales AWS (`aws configure` o variables de entorno)
-- Actualizar el `ENDPOINT_URL` en `pages/1_Upload_Images.py` con su endpoint de procesamiento
+idealmente ponerlas en un perfil llamado dvc-user
+- ~~Actualizar el `ENDPOINT_URL` en `pages/1_Upload_Images.py` con su endpoint de procesamiento~~ (Ahora se configura automáticamente)
 
 
-# TODO: 
+## Note on BBOX formats:
 
+
+SSD/ RCNN/ Fast RCNN/ Faster RCNN use the same format while training an object detection model. They use the Pascal VOC dataset format.
+
+In this format, the bounding box is represented in as follows `[x_min, y_min, x_max, y_max]`
+
+Source: https://lohithmunakala.medium.com/bounding-box-formats-for-models-like-yolo-ssd-rcnn-fast-rcnn-faster-rcnn-807be7721527
+
+
+## Ideas para el futuro: 
+
+Usar otras arquitecturas de acá: 
+https://docs.pytorch.org/vision/main/models/faster_rcnn.html
+
+# TODO:
+
+- [ ] Averiguar lo de iscrow que se menciona en la funcion de mean_average_precision de torchmetrics 
+y también se estaba poniendo en los diccionarios devueltos por datasetv1... 
 - [ ] Experiment freezing all parameters except final BoxPRedictor head...
+- [ ] Experiment with other optimizers
