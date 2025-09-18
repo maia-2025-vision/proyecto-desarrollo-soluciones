@@ -12,8 +12,10 @@ AWS_PROFILE = os.getenv("AWS_PROFILE")
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-logger.info(f"AWS_PROFILE={AWS_PROFILE!r}, AWS_ACCESS_KEY_ID={AWS_ACCESS_KEY_ID}, "
-            f"AWS_SECRET_ACCESS_KEY is defined: {AWS_SECRET_ACCESS_KEY is not None}")
+logger.info(
+    f"AWS_PROFILE={AWS_PROFILE!r}, AWS_ACCESS_KEY_ID={AWS_ACCESS_KEY_ID}, "
+    f"AWS_SECRET_ACCESS_KEY is defined: {AWS_SECRET_ACCESS_KEY is not None}"
+)
 
 session = boto3.Session(profile_name=AWS_PROFILE)
 s3_client = session.client("s3")
@@ -79,6 +81,17 @@ def upload_json_to_s3(prediction: dict, image_url: str):
     )
 
     return f"s3://{bucket}/{json_key}"
+
+
+def list_farms_folders() -> list[str]:
+    """Lista las granjas disponibles.
+
+    Returns:
+        list[str]: Nombres de las granjas.
+    """
+    response = s3_client.list_objects_v2(Bucket=bucket, Delimiter="/")
+    farms = [cp["Prefix"].rstrip("/").split("/")[-1] for cp in response.get("CommonPrefixes", [])]
+    return farms
 
 
 def list_flyover_folders(farm: str) -> list[str]:
