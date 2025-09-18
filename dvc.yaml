@@ -143,7 +143,7 @@ stages:
       --cfg cow_detect/train/teo/train_cfg_v3.yaml
       --device cuda
       --train-data data/standardized/sky.dataset1.jsonl
-      --train-data-fraction 1.0
+      --train-data-fraction 0.02
       --valid-data data/standardized/sky.dataset2.jsonl
       --valid-data-fraction 1.0
       --save-path data/training/teo/v3-sky1

@@ -21,6 +21,7 @@ def log_params_v1(
     model_type: type,
     opt_params: OptimizerParams,
     dl_params: DataLoaderParams,
+    trainable_backbone_layers: int | None,
 ) -> None:
     cfg_full = yaml.safe_dump(train_cfg)
 
@@ -32,6 +33,7 @@ def log_params_v1(
     mlflow.log_param("cfg_path", str(train_cfg_path))
     mlflow.log_param("cfg_full", cfg_full)
     mlflow.log_param("model_class", model_type.__name__)
+    mlflow.log_param("trainable_backbone_layers", trainable_backbone_layers)
     mlflow.log_param("num_epochs", num_epochs)
     mlflow.log_param("optimizer_class", opt_params.optimizer_class)
     mlflow.log_param("lr", opt_params.learning_rate)

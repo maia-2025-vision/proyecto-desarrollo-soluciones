@@ -39,11 +39,12 @@ cli = Typer(pretty_exceptions_show_locals=False)
 mlflow.set_tracking_uri(f"file://{os.getcwd()}/data/mlruns")
 
 
-def get_model(num_classes: int) -> FasterRCNN:  # type: ignore[no-any-unimported]
+def get_model(num_classes: int, trainable_backbone_layers: int | None = None) -> FasterRCNN:  # type: ignore[no-any-unimported]
     """Get a faster-rcnn model with a box_predictor head for the given number of classes."""
     # Load a pre-trained Faster R-CNN model with a ResNet-50 backbone
     model = torchvision.models.detection.fasterrcnn_resnet50_fpn(
-        weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1
+        weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1,
+        trainable_backbone_layers=trainable_backbone_layers,
     )
 
     # Get the number of input features for the classifier
@@ -91,6 +92,7 @@ class TrainCfg(BaseModel):
     data_loader: DataLoaderParams
     num_epochs: int
     optimizer: OptimizerParams
+    trainable_backbone_layers: int | None = None
     device: str = "cpu"
     num_classes: int = 2
     key_metric: str = "mar_medium"

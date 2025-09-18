@@ -174,8 +174,9 @@ class TrainerV2:
             for batch in pbar:
                 images = [image.to(self.device) for image in batch["image_pt"]]
                 targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
+                all_targets.extend([remove_keys(tgt, "image_pt") for tgt in targets])  # cpu!
+
                 targets = [dict_to_device(tgt, self.device) for tgt in targets]
-                all_targets.extend([remove_keys(tgt, "image_pt") for tgt in targets])
 
                 # PREDICTION happens here:
                 predictions: list[dict] = detach_dicts(model(images, targets))
@@ -381,7 +382,9 @@ def train_v2_std_cli(
     # Define number of classes (cow + background)
     logger.info(f"Training model with num_classes={train_cfg.num_classes}")
 
-    model = get_model(train_cfg.num_classes)
+    model = get_model(
+        train_cfg.num_classes, trainable_backbone_layers=train_cfg.trainable_backbone_layers
+    )
     model.to(train_cfg.device)
 
     # Define the optimizer
@@ -427,6 +430,7 @@ def train_v2_std_cli(
             model_type=type(model),
             opt_params=opt_params,
             dl_params=dl_params,
+            trainable_backbone_layers=train_cfg.trainable_backbone_layers,
         )
 
         trainer.run_experiment(max_epochs=num_epochs, model=model)

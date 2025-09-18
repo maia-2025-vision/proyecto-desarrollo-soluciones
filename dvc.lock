@@ -344,8 +344,8 @@ stages:
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: 76a0f08d198035a3cc4e16a961950fe1
-      size: 11302
+      md5: cf33ebfb320d1d5fbaae8ffb54e0154b
+      size: 12280
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -358,6 +358,6 @@ stages:
     outs:
     - path: data/evaluation/eval-v1-over-sky2
       hash: md5
-      md5: 006454035ed49c7423c118775c8037b4.dir
-      size: 36475
+      md5: b7ce5ccc3583af93437ad19dfd340dca.dir
+      size: 36494
       nfiles: 2
