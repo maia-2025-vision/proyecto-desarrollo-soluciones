@@ -4,6 +4,7 @@ import io
 import json
 import time
 from pathlib import Path
+from typing import Annotated
 
 import mlflow
 import numpy as np
@@ -12,14 +13,15 @@ import tqdm
 import typer
 import yaml
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from torch import nn
 from torch.utils.data import DataLoader
 from torchmetrics.functional.detection import mean_average_precision
 
 from cow_detect.datasets.std import AnnotatedImagesDataset
-from cow_detect.train.teo.train_v1 import TrainCfg, get_model
-from cow_detect.train.train_utils import save_model_and_version
+from cow_detect.train.teo.train_v1 import get_model
+from cow_detect.train.train_utils import get_optimizer, save_model_and_version
+from cow_detect.utils.config import DataLoaderParams
 from cow_detect.utils.data import (
     custom_collate_dicts,
     make_jsonifiable_singletons,
@@ -265,6 +267,30 @@ class TrainerV2:
 DEFAULT_LABEL_TO_ID: dict[str, int] = {"cow": 1, "cattle": 1, "calf": 1}
 
 
+class TrainCfgV2(BaseModel):
+    """Parameters fort training."""
+
+    experiment_name: str
+    train_fraction: float | None = None
+    valid_fraction: float | None = None
+    data_loader: DataLoaderParams
+    num_epochs: int
+    optimizer_class: str
+    optimizer_kwargs: dict[str, object]
+    trainable_backbone_layers: int | None = None
+    device: str = "cpu"
+    num_classes: int = 2
+    key_metric: str = "mar_medium"
+    max_detection_thresholds: Annotated[
+        list[int],
+        Field(
+            default_factory=lambda: [5, 10, 25],
+            description="thresholds used for calculating mAR metrics,"
+            " needs to be limited to at most 3 elems...(bug in torchmetrics?)",
+        ),
+    ]
+
+
 @cli.command()
 def train_v2_std_cli(
     train_cfg_path: Path = typer.Option(..., "--cfg", help="where to get the config from"),
@@ -311,7 +337,7 @@ def train_v2_std_cli(
     cfg_dict = None
     try:
         cfg_dict = yaml.safe_load(io.StringIO(train_cfg_text))
-        train_cfg: TrainCfg = TrainCfg.model_validate(cfg_dict)
+        train_cfg: TrainCfgV2 = TrainCfgV2.model_validate(cfg_dict)
     except Exception:
         logger.error(f"Failed to parse load or parse train_cfg:\n{json.dumps(cfg_dict, indent=2)}")
         raise
@@ -388,17 +414,14 @@ def train_v2_std_cli(
     model.to(train_cfg.device)
 
     # Define the optimizer
-    params = [p for p in model.parameters() if p.requires_grad]
-
-    opt_params = train_cfg.optimizer
-    # TODO: experiment with other optimizers? Adam, AdamW?
-    assert opt_params.optimizer_class == "SGD", f"{opt_params.optimizer_class=} not yet supported"
-    optimizer = torch.optim.SGD(
-        params,
-        lr=opt_params.learning_rate,
-        momentum=opt_params.momentum,
-        weight_decay=opt_params.weight_decay,
+    model_params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = get_optimizer(
+        optimizer_class=train_cfg.optimizer_class,
+        model_params=model_params,
+        opt_kwargs=train_cfg.optimizer_kwargs,
     )
+
+    # TODO: experiment with other optimizers? Adam, AdamW?
     trainer = TrainerV2(
         device=torch.device(train_cfg.device),
         train_cfg=train_cfg,
@@ -428,7 +451,7 @@ def train_v2_std_cli(
             valid_data_fraction=train_cfg.valid_fraction,
             num_epochs=num_epochs,
             model_type=type(model),
-            opt_params=opt_params,
+            opt_params={"optimizer_class": train_cfg.optimizer_class, **train_cfg.optimizer_kwargs},
             dl_params=dl_params,
             trainable_backbone_layers=train_cfg.trainable_backbone_layers,
         )
