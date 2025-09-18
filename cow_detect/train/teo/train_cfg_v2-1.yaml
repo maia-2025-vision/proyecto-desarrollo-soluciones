@@ -5,6 +5,7 @@ data_loader:
   data_shuffle: true
   num_workers: 0
   valid_batch_size: 2 # bigger values don't work on small GPU
+trainable_backbone_layers: 1
 optimizer_class: "SGD"
 optimizer_kwargs:
   lr: 0.005
