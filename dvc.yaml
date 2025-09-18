@@ -148,6 +148,7 @@ stages:
       --valid-data-fraction 1.0
       --save-path data/training/teo/v2-1-sky1
     deps:
+      - cow_detect/train/teo/train_cfg_v2-1.yaml
       - data/standardized/sky.dataset1.jsonl
       - data/standardized/sky.dataset2.jsonl
     outs:
