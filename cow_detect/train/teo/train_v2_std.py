@@ -2,7 +2,6 @@
 import gc
 import io
 import json
-import time
 from pathlib import Path
 from typing import Annotated
 
@@ -28,9 +27,8 @@ from cow_detect.utils.data import (
     remove_keys,
     zip_dict,
 )
-from cow_detect.utils.debug import mem_info_str
 from cow_detect.utils.metrics import mean_iou
-from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
+from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params
 from cow_detect.utils.pytorch import detach_dicts, dict_to_device
 from cow_detect.utils.train import get_num_batches
 from cow_detect.utils.versioning import get_git_revision_hash
@@ -115,11 +113,11 @@ class TrainerV2:
             self.optimizer.step()
 
             train_losses.append(total_loss.detach().item())
-            mem_info = mem_info_str()
+            # mem_info = mem_info_str()
             pbar.set_description(
                 f"Epoch {epoch} - batch: {i + 1} / {n_batches}: "
                 f"training: mean.loss={np.mean(train_losses):.4f}, "
-                f"mean.train.iou={running_train_iou:.4f}, {mem_info}"
+                f"mean.train.iou={running_train_iou:.4f}"  # , {mem_info}"
             )
 
             torch.cuda.empty_cache()
@@ -172,7 +170,7 @@ class TrainerV2:
         n_batches = get_num_batches(self.valid_data_loader)
         with torch.no_grad():
             pbar = tqdm.tqdm(self.valid_data_loader, total=n_batches)
-            pbar.set_description("Epoch 0: VALIDATION: mean.iou=....., n_iou_preds=...")
+            # pbar.set_description("Epoch 0: VALIDATION: mean.iou=....., n_iou_preds=...")
             for batch in pbar:
                 images = [image.to(self.device) for image in batch["image_pt"]]
                 targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
@@ -183,12 +181,10 @@ class TrainerV2:
                 # PREDICTION happens here:
                 predictions: list[dict] = detach_dicts(model(images, targets))
                 all_predictions.extend(predictions)
-                t0 = time.perf_counter()
                 running_mean_iou, iou_preds = mean_iou(all_predictions, all_targets)
-                elapsed = time.perf_counter() - t0
                 pbar.set_description(
                     f"Epoch {epoch}: VALIDATION:  mean.iou={running_mean_iou:.4f}, "
-                    f"n_iou_preds={iou_preds}, elapsed={elapsed:.4f}"
+                    f"n_iou_preds={iou_preds}"
                 )
                 torch.cuda.empty_cache()
 
@@ -440,7 +436,7 @@ def train_v2_std_cli(
     logger.info(f"Setting mlflow.experiment_name={train_cfg.experiment_name}")
     experiment = mlflow.set_experiment(train_cfg.experiment_name)
     with mlflow.start_run(experiment_id=experiment.experiment_id):
-        log_params_v1(
+        log_params(
             device=train_cfg.device,
             train_cfg=train_cfg.model_dump(),
             git_revision=git_revision,

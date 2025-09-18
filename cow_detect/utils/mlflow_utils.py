@@ -7,7 +7,7 @@ import yaml
 from cow_detect.utils.config import DataLoaderParams, OptimizerParams
 
 
-def log_params_v1(
+def log_params(
     *,
     device: str,
     git_revision: str,
@@ -19,7 +19,7 @@ def log_params_v1(
     valid_data_fraction: float,
     num_epochs: int,
     model_type: type,
-    opt_params: OptimizerParams,
+    opt_params: OptimizerParams | dict[str, object],
     dl_params: DataLoaderParams,
     trainable_backbone_layers: int | None,
 ) -> None:
@@ -35,10 +35,19 @@ def log_params_v1(
     mlflow.log_param("model_class", model_type.__name__)
     mlflow.log_param("trainable_backbone_layers", trainable_backbone_layers)
     mlflow.log_param("num_epochs", num_epochs)
-    mlflow.log_param("optimizer_class", opt_params.optimizer_class)
-    mlflow.log_param("lr", opt_params.learning_rate)
-    mlflow.log_param("momentum", opt_params.momentum)
-    mlflow.log_param("weight_decay", opt_params.weight_decay)
+
+    if isinstance(opt_params, OptimizerParams):
+        mlflow.log_param("optimizer_class", opt_params.optimizer_class)
+        mlflow.log_param("lr", opt_params.learning_rate)
+        # These only apply for some optimizers...
+        mlflow.log_param("momentum", opt_params.momentum)
+        mlflow.log_param("weight_decay", opt_params.weight_decay)
+    elif isinstance(opt_params, dict):
+        mlflow.log_param("optimizer_class", opt_params["optimizer_class"])
+        mlflow.log_param("lr", opt_params["lr"])
+        mlflow.log_param("optimizer_kwargs", opt_params)
+    else:
+        raise TypeError("opt_params should be of type 'OptimizerParams' or dict")
     mlflow.log_param("batch_size", dl_params.batch_size)
     mlflow.log_param("num_workers", dl_params.num_workers)
     mlflow.log_param("device", str(device))
