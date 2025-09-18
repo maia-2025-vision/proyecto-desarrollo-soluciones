@@ -24,11 +24,12 @@ from cow_detect.utils.data import (
     custom_collate_dicts,
     make_jsonifiable,
     make_jsonifiable_singletons,
-    zip_dict, remove_keys,
+    remove_keys,
+    zip_dict,
 )
-from cow_detect.utils.debug import summarize, get_process_memory_info_mb
+from cow_detect.utils.debug import get_process_memory_info_mb, mem_info_str, summarize
 from cow_detect.utils.metrics import max_ious_for_preds
-from cow_detect.utils.pytorch import try_device, dict_to_device
+from cow_detect.utils.pytorch import dict_to_device, try_device
 
 reload(ds)
 
@@ -162,9 +163,7 @@ def eval_on_whole_dataset(
     # pbar = tqdm.tqdm(enumerate(predict_data_loader), total=n_batches)
     with torch.no_grad():
         for i, batch in enumerate(predict_data_loader):
-            proc_mem = get_process_memory_info_mb()
-            cuda_alloc, cuda_reserved = torch.cuda.memory_allocated() / 2 ** 20, torch.cuda.memory_reserved() / 2 ** 20
-            logger.info(f"batch: {i} / {n_batches} RSS MEM: {proc_mem:.1f} MB {cuda_alloc=:.1f} MB / {cuda_reserved=:.1f} MB")
+            logger.info(f"batch: {i} / {n_batches} - {mem_info_str()}")
 
             # pbar.set_description(f"Batch {i + 1} / {n_batches}: RSS memory: {proc_mem:.1f} MB,
             # CUDA memory: {torch.cuda.memory_stats()}")

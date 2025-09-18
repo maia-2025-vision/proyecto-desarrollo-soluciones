@@ -20,8 +20,13 @@ from torchmetrics.functional.detection import mean_average_precision
 from cow_detect.datasets.std import AnnotatedImagesDataset
 from cow_detect.train.teo.train_v1 import TrainCfg, get_model
 from cow_detect.train.train_utils import save_model_and_version
-from cow_detect.utils.data import custom_collate_dicts, make_jsonifiable_singletons, zip_dict
-from cow_detect.utils.debug import summarize
+from cow_detect.utils.data import (
+    custom_collate_dicts,
+    make_jsonifiable_singletons,
+    remove_keys,
+    zip_dict,
+)
+from cow_detect.utils.debug import mem_info_str
 from cow_detect.utils.metrics import mean_iou
 from cow_detect.utils.mlflow_utils import log_mapr_metrics, log_params_v1
 from cow_detect.utils.pytorch import detach_dicts, dict_to_device
@@ -29,18 +34,6 @@ from cow_detect.utils.train import get_num_batches
 from cow_detect.utils.versioning import get_git_revision_hash
 
 cli = typer.Typer(pretty_exceptions_show_locals=False, no_args_is_help=True)
-
-import os
-import psutil
-
-def get_process_memory_info_mb():
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    return mem_info.rss / (2 ** 20) # Resident Set Size (physical memory used)
-
-
-def remove_keys(a_dict: dict[str, object], *keys: str) -> dict[str, object]:
-    return {k: v for k, v in a_dict.items() if k not in set(keys)}
 
 
 class TrainerV2:
@@ -92,18 +85,18 @@ class TrainerV2:
         all_predictions: list[dict] = []
 
         n_batches = get_num_batches(self.train_data_loader)
-        # pbar = tqdm.tqdm(self.train_data_loader, total=n_batches)
-        for i, batch in enumerate(self.train_data_loader):
-            # pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
-            logger.info(f"Batch {i}: {get_process_memory_info_mb():.1f} MB")
+        pbar = tqdm.tqdm(self.train_data_loader, total=n_batches)
+        pbar.set_description("Epoch 0: Training: avg.loss=..... avg.mean.iou=.....")
+
+        for i, batch in enumerate(pbar):
             model.train()
             images = [image.to(self.device) for image in batch["image_pt"]]
             targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
-            targets_wo_imgs = [remove_keys(a_dict, "image_pt") for a_dict in targets ]
-            all_targets.extend(targets_wo_imgs) # cpu!
+            targets_wo_imgs = [remove_keys(a_dict, "image_pt") for a_dict in targets]
+            all_targets.extend(targets_wo_imgs)  # cpu!
 
             targets = [dict_to_device(tgt, self.device) for tgt in targets]
-            
+
             loss_dict = model(images, targets)
             total_loss: torch.Tensor = sum(loss for loss in loss_dict.values())
 
@@ -114,19 +107,20 @@ class TrainerV2:
                 all_predictions.extend(predictions)
                 model.train()
 
-            # print("all_preds",   summarize(all_predictions))
-
             running_train_iou, _ = mean_iou(all_predictions, all_targets)
             self.optimizer.zero_grad()
             total_loss.backward()
             self.optimizer.step()
 
             train_losses.append(total_loss.detach().item())
+            mem_info = mem_info_str()
+            pbar.set_description(
+                f"Epoch {epoch} - batch: {i + 1} / {n_batches}: "
+                f"training: mean.loss={np.mean(train_losses):.4f}, "
+                f"mean.train.iou={running_train_iou:.4f}, {mem_info}"
+            )
 
-            # pbar.set_description(
-            #    f"Epoch {epoch}: training: mean.loss={np.mean(train_losses):.4f}, "
-            #    f"mean.train.iou={running_train_iou:.4f}"
-            # )
+            torch.cuda.empty_cache()
 
         mapr_metrics_raw = mean_average_precision(  # type: ignore[arg-type]
             preds=all_predictions,
@@ -151,6 +145,7 @@ class TrainerV2:
             step=epoch,
             max_detect_thresholds=self.max_detection_thresholds,
         )
+
         logger.info(
             f"Epoch {epoch} (train): {mean_train_loss=:.4}, {train_iou=:.4f}, {logged_maprs=}"
         )
@@ -180,7 +175,7 @@ class TrainerV2:
                 images = [image.to(self.device) for image in batch["image_pt"]]
                 targets: list[dict] = zip_dict(batch)  # type: ignore[arg-type]
                 targets = [dict_to_device(tgt, self.device) for tgt in targets]
-                all_targets.extend(targets)
+                all_targets.extend([remove_keys(tgt, "image_pt") for tgt in targets])
 
                 # PREDICTION happens here:
                 predictions: list[dict] = detach_dicts(model(images, targets))
@@ -192,6 +187,7 @@ class TrainerV2:
                     f"Epoch {epoch}: VALIDATION:  mean.iou={running_mean_iou:.4f}, "
                     f"n_iou_preds={iou_preds}, elapsed={elapsed:.4f}"
                 )
+                torch.cuda.empty_cache()
 
         mapr_metrics_raw = mean_average_precision(
             preds=all_predictions,

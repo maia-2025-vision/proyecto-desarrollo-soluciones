@@ -1,7 +1,7 @@
 import json
 import os
 import subprocess
-from hashlib import sha256, md5
+from hashlib import md5, sha256
 
 
 def get_git_revision_hash() -> str:
@@ -43,4 +43,3 @@ def get_cfg_hash(cfg: dict[str, object] | str, length: int = 12) -> str:
         cfg_str = cfg
 
     return sha256(cfg_str.encode("utf8")).hexdigest()[:length]
-    
