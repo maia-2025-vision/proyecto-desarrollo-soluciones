@@ -3,16 +3,24 @@ import os
 from urllib.parse import unquote, urlparse
 
 import boto3
+from loguru import logger
 
 # When running with docker AWS_PROFILE env var should NOT be set
 # instead AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars should be
 # provided to the container by the external environment
+
+logger.info(
+    f"Env var AWS_PROFILE={os.getenv('AWS_PROFILE')!r}, AWS_ACCESS_KEY_ID={os.getenv('AWS_ACCESS_KEY_ID')!r}, "
+    f"AWS_SECRET_ACCESS_KEY is defined: {os.geten('AWS_SECRET_ACCESS_KEY') is not None}"
+)
+
 
 session = (
     boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
     if os.getenv("AWS_PROFILE")
     else boto3.Session()
 )
+
 s3_client = session.client("s3")
 bucket = "cow-detect-maia"
 

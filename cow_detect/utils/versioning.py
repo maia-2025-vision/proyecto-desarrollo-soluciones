@@ -1,7 +1,7 @@
 import json
 import os
 import subprocess
-from hashlib import sha256
+from hashlib import md5, sha256
 
 
 def get_git_revision_hash() -> str:

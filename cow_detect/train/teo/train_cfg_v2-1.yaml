@@ -1,0 +1,13 @@
+experiment_name: "faster-rcnn-v3"
+num_epochs: 15
+data_loader:
+  batch_size: 2
+  data_shuffle: true
+  num_workers: 0
+  valid_batch_size: 2 # bigger values don't work on small GPU
+trainable_backbone_layers: 1
+optimizer_class: "Adam"
+optimizer_kwargs:
+  lr: 0.005
+  # momentum: 0.9
+  weight_decay: 0.0005

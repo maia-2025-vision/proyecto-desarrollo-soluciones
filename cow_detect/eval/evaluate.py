@@ -4,6 +4,7 @@ import json
 import time
 from importlib import reload
 from pathlib import Path
+from pprint import pformat
 from typing import Annotated, TypedDict
 
 import pandas as pd
@@ -23,9 +24,12 @@ from cow_detect.utils.data import (
     custom_collate_dicts,
     make_jsonifiable,
     make_jsonifiable_singletons,
+    remove_keys,
     zip_dict,
 )
+from cow_detect.utils.debug import get_process_memory_info_mb, mem_info_str, summarize
 from cow_detect.utils.metrics import max_ious_for_preds
+from cow_detect.utils.pytorch import dict_to_device, try_device
 
 reload(ds)
 
@@ -103,30 +107,30 @@ def counting_errors_by_score_threshold(
 
 
 def eval_one_batch(
-    batch: BatchForEvaluation, model: nn.Module
+    batch: BatchForEvaluation, model: nn.Module, device: torch.device
 ) -> tuple[list[OneImageEvaluationResult], list[Prediction], list[Target]]:
     """Run evaluation on one batch of data.
 
     Return a list of OneImageEvaluationResult, one per each image in the input batch.
     """
-    images_batch: list[torch.Tensor] = batch["image_pt"]
+    images_batch: list[torch.Tensor] = [img.to(device) for img in batch["image_pt"]]
 
     t0 = time.perf_counter()
     # PREDICTION happens here:
     preds_batch: list[Prediction] = model(images_batch)
+    preds_batch = [dict_to_device(pred, "cpu") for pred in preds_batch]
     pred_elapsed = time.perf_counter() - t0
 
     assert len(preds_batch) == len(images_batch), f"{len(preds_batch)} != {len(images_batch)}"
+    # targets_batch : CPU
     targets_batch: list[Target] = zip_dict(batch)  # type: ignore[arg-type, assignment]
     batch_size = len(preds_batch)
 
     output_records = []
     for target, prediction in zip(targets_batch, preds_batch, strict=False):
         image_path = target["image_path"]
-        true_bboxes = target["boxes"]
-        # print("precision:", mapr_metrics["map"])  # , " recall:", metrics["mar"])
 
-        true_count = len(true_bboxes)
+        true_count = len(target["boxes"])
         output_record = OneImageEvaluationResult(
             image_path=image_path,
             true_count=true_count,
@@ -140,11 +144,12 @@ def eval_one_batch(
 
         output_records.append(output_record)
 
+    # return everything on CPI
     return output_records, preds_batch, targets_batch
 
 
 def eval_on_whole_dataset(
-    predict_ds: ds.AnnotatedImagesDataset, model: nn.Module, batch_size: int
+    predict_ds: ds.AnnotatedImagesDataset, model: nn.Module, batch_size: int, device: torch.device
 ) -> EvaluationResults:
     # Run evaluation on each image:
     predict_data_loader = DataLoader(
@@ -154,12 +159,20 @@ def eval_on_whole_dataset(
     all_eval_results: list[OneImageEvaluationResult] = []
     all_preds: list[Prediction] = []
     all_targets: list[Target] = []
-    pbar = tqdm.tqdm(predict_data_loader, total=predict_ds.num_batches(batch_size))
-    for batch in pbar:
-        eval_results, preds_batch, targets_batch = eval_one_batch(batch, model)
-        all_eval_results.extend(eval_results)
-        all_preds.extend(preds_batch)
-        all_targets.extend(targets_batch)
+    n_batches = predict_ds.num_batches(batch_size)
+    # pbar = tqdm.tqdm(enumerate(predict_data_loader), total=n_batches)
+    with torch.no_grad():
+        for i, batch in enumerate(predict_data_loader):
+            logger.info(f"batch: {i} / {n_batches} - {mem_info_str()}")
+
+            # pbar.set_description(f"Batch {i + 1} / {n_batches}: RSS memory: {proc_mem:.1f} MB,
+            # CUDA memory: {torch.cuda.memory_stats()}")
+            eval_results, preds_batch, targets_batch = eval_one_batch(batch, model, device)
+            all_eval_results.extend(eval_results)
+            all_preds.extend(preds_batch)
+            all_targets.extend([remove_keys(tgt, "image_pt") for tgt in targets_batch])
+
+            torch.cuda.empty_cache()
 
     mapr_metrics = mean_average_precision(
         preds=all_preds,  # type: ignore[arg-type]
@@ -223,6 +236,9 @@ def eval_from_std_dataset(
         "against which to run evaluation"
     ),
     model_type: str = "teo",
+    device: str = typer.Option(
+        "cuda", help="the preferred device, if not available will default to cpu."
+    ),
     output_path: Path = typer.Option(
         ..., "--out", help="path of output directory, several files will be written into it"
     ),
@@ -241,11 +257,13 @@ def eval_from_std_dataset(
     predict_ds = ds.AnnotatedImagesDataset(
         std_data_path, limit=limit, label_to_id=label_to_id, name=std_data_path.name
     )
-    model = get_prediction_model(model_weights, model_type=model_type)
+    actual_device = try_device(device)
+    logger.info(f"Using device: {actual_device}")
+    model = get_prediction_model(model_weights, model_type=model_type).to(actual_device)
     model.eval()
 
     logger.info(f"Evaluation starts... Results will be saved to {output_path!s}")
-    eval_results = eval_on_whole_dataset(predict_ds, model, batch_size)
+    eval_results = eval_on_whole_dataset(predict_ds, model, batch_size, actual_device)
 
     output_path.mkdir(parents=True, exist_ok=True)
     # Write evaluation results, one line per image
@@ -256,6 +274,7 @@ def eval_from_std_dataset(
 
     summary_path = output_path / "summary.json"
     eval_results.by_image_results = []
+    logger.info(f"evaluation summary:\n{eval_results.model_dump_json(indent=4)}")
     logger.info(f"Summary results will be saved to {summary_path!s}")
     summary_path.write_text(eval_results.model_dump_json(indent=4))
 

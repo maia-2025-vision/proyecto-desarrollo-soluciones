@@ -1,0 +1,13 @@
+experiment_name: "faster-rcnn-v1"
+device: "cuda"
+num_epochs: 20
+train_fraction: 0.90
+valid_fraction: 0.10
+data_loader:
+  batch_size: 3
+  data_shuffle: true
+  num_workers: 0
+optimizer:
+  learning_rate: 0.002
+  momentum: 0.9
+  weight_decay: 0.0002
