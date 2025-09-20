@@ -17,7 +17,7 @@ from api.req_resp_types import (
     PredictManyResult,
     PredictOneRequest,
 )
-from api.utils import (
+from api.s3_utils import (
     download_file_from_s3,
     get_predictions_from_s3_folder,
     list_farms_folders,

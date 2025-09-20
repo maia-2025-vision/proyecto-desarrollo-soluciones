@@ -8,9 +8,8 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from api.req_resp_types import PredictionError
-from cow_detect.predict.batch import get_prediction_model
-
-from .routes import model_pack, router
+from api.routes import model_pack, router
+from api.torch_utils import get_prediction_model
 
 
 # Proper way to load a model on startup
@@ -25,14 +24,14 @@ async def lifespan(app: FastAPI):
     aws_profile = os.getenv("AWS_PROFILE")
     logger.info(f"env var AWS_PROFILE={aws_profile!r}")
     aws_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    logger.info(f"env var AWS_ACCESS_KEY_ID={aws_key_id}")
     aws_secret_is_defined = os.getenv("AWS_SECRET_ACCESS_KEY") is not None
 
     if aws_profile is None and (aws_key_id is None or not aws_secret_is_defined):
-        logger.error("Need to provide at least AWS_PROFILE env var,"
-        " or both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+        logger.error(
+            "Need to provide at least AWS_PROFILE env var,"
+            " or both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+        )
         raise RuntimeError("No AWS credentials!")
-
 
     model_weights_path = Path(model_path)
     pt_model = get_prediction_model(model_weights_path)
