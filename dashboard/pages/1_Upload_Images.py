@@ -10,12 +10,17 @@ from loguru import logger
 st.set_page_config(page_title="Cargar Imágenes", layout="wide")
 
 st.title("Cargar Imágenes 📤")
-st.markdown("Carga imágenes y ejecutar detección sobre las mismas") # Eliminé 'al bucket S3 cow-detect-maia' para simplificar la UI para el usuario final.
+st.markdown(
+    "Carga imágenes y ejecutar detección sobre las mismas"
+)  # Eliminé 'al bucket S3 cow-detect-maia' para simplificar la UI para el usuario final.
 
 S3_BUCKET = "cow-detect-maia"
+API_BASE_URL = os.getenv("APISERVICE_BASE_URL", "http://localhost:8000")
 # ENDPOINT_URL = "https://example.com"  # Configura aquí la URL de tu endpoint
-# ENDPOINT_URL = "http://localhost:8000/predict" # Endpoint antiguo
-ENDPOINT_URL = "http://localhost:8000/predict-many" # MODIFICADO: Usando el nuevo endpoint para lotes
+# PREDICT_ENDPOINT_URL = f"{API_BASE_URL}/predict" # Endpoint antiguo
+PREDICTMANY_ENDPOINT_URL = (
+    f"{API_BASE_URL}/predict-many"  # MODIFICADO: Usando el nuevo endpoint para lotes
+)
 
 
 @st.cache_resource
@@ -58,17 +63,18 @@ def upload_to_s3(file, s3_client, key):
 #     except requests.exceptions.RequestException as e:
 #         return False, f"Error del endpoint: {str(e)}"
 
+
 #  Función para llamar al endpoint de lotes.
 def call_batch_endpoint(s3_uris: list[str]):
     """Llama al endpoint de predicción por lotes con una lista de URIs de S3."""
-    assert ENDPOINT_URL is not None
+    assert PREDICTMANY_ENDPOINT_URL is not None
     if not s3_uris:
         return False, "No se proporcionaron URIs de S3 al endpoint."
 
     try:
         payload = {"urls": s3_uris}
         # Timeout más corto porque se llama por lotes más pequeños
-        response = requests.post(ENDPOINT_URL, json=payload, timeout=60)
+        response = requests.post(PREDICTMANY_ENDPOINT_URL, json=payload, timeout=60)
         response.raise_for_status()
         return True, response.json().get("results", [])
     except requests.exceptions.RequestException as e:
@@ -127,8 +133,8 @@ def main():
     # Construir la ruta del prefijo S3
     prefix = f"{finca}/{sobrevuelo}/" if finca and sobrevuelo else ""
 
-    MAX_FILES = 20 #Para alcanzar a cubrir 5 bathces
-    BATCH_SIZE = 4
+    max_files = 20  # Para alcanzar a cubrir 5 bathces
+    batch_size = 4
 
     uploaded_files = st.file_uploader(
         "Seleccione imágenes para cargar",
@@ -140,20 +146,24 @@ def main():
         num_files = len(uploaded_files)
         st.info(f"{num_files} archivo(s) seleccionado(s)")
 
-        if num_files > MAX_FILES:
-            st.warning(f"Ha seleccionado {num_files} archivos. Por favor, seleccione un máximo de {MAX_FILES} archivos a la vez.")
+        if num_files > max_files:
+            st.warning(
+                f"Ha seleccionado {num_files} archivos. Por favor, seleccione "
+                f"un máximo de {max_files} archivos a la vez."
+            )
             upload_disabled = True
         else:
             upload_disabled = not finca or not sobrevuelo
 
+        # Eliminé ' a S3' para simplificar el producto para el usuario final.
         if st.button(
-            "Cargar y Ejecutar Detección", #Eliminé ' a S3' para simplificar el producto para el usuario final.
+            "Cargar y Ejecutar Detección",
             type="primary",
             disabled=upload_disabled,
         ):
             # --- Guardar Finca y Sobrevuelo en la sesión ---
-            st.session_state['finca'] = finca
-            st.session_state['sobrevuelo'] = sobrevuelo
+            st.session_state["finca"] = finca
+            st.session_state["sobrevuelo"] = sobrevuelo
 
             progress_bar = st.progress(0, text="Iniciando subida a S3...")
             status_container = st.container()
@@ -166,7 +176,8 @@ def main():
 
             #  Bucle de subida a S3
             for idx, uploaded_file in enumerate(uploaded_files):
-                progress_text_s3 = f"Subiendo: {uploaded_file.name} ({idx + 1}/{num_files})" #Eliminé 'a S3' para simplificar el producto para el usuario final.
+                # Eliminé 'a S3' para simplificar el producto para el usuario final.
+                progress_text_s3 = f"Subiendo: {uploaded_file.name} ({idx + 1}/{num_files})"
                 progress_bar.progress((idx + 1) / num_files * 0.5, text=progress_text_s3)
 
                 s3_key = f"{prefix}{uploaded_file.name}"
@@ -184,35 +195,43 @@ def main():
             if s3_uris_for_api:
                 # Crear un mapa de URI -> nombre de archivo para una búsqueda eficiente O(n)
                 # Esto evita tener que buscar en la lista 'successful_uploads' en cada iteración
-                uri_to_name_map = {
-                    f"s3://{S3_BUCKET}/{k}": n for n, k, _ in successful_uploads
-                }
+                uri_to_name_map = {f"s3://{S3_BUCKET}/{k}": n for n, k, _ in successful_uploads}
 
                 # --- Lógica de lotes exactamente como la sugirió cuckookernel ---
                 all_batch_responses = []
                 processed_images_count = 0
 
-                for batch in batches_from_list(s3_uris_for_api, batch_size=BATCH_SIZE):
+                for batch in batches_from_list(s3_uris_for_api, batch_size=batch_size):
                     num_in_batch = len(batch)
-                    
-                    with st.spinner(f"Procesando un lote de {num_in_batch} imágenes."): # Le quite 'imágenes con el API...'Porque es el producto para el usuario final que no necesita saber esto. Si les parece podemos agregarlo nuevamente.
+
+                    with st.spinner(f"Procesando un lote de {num_in_batch} imágenes."):
+                        # Le quite 'imágenes con el API...'Porque es el producto para el usuario
+                        # final que no necesita saber esto.
+                        # Si les parece podemos agregarlo nuevamente.
                         batch_success, batch_response_increment = call_batch_endpoint(batch)
 
                     if batch_success:
                         all_batch_responses.extend(batch_response_increment)
                     else:
-                        st.error(f"La llamada al API falló para un lote: {batch_response_increment}")
+                        st.error(
+                            f"La llamada al API falló para un lote: {batch_response_increment}"
+                        )
                         # Marcar todas las imágenes de este lote como fallidas
                         for uri in batch:
                             name = uri_to_name_map.get(uri, "NombreDesconocido")
-                            endpoint_results.append((name, False, f"Fallo en el lote: {batch_response_increment}"))
+                            endpoint_results.append(
+                                (name, False, f"Fallo en el lote: {batch_response_increment}")
+                            )
 
                     # Actualizar progreso basado en el número de imágenes procesadas
                     processed_images_count += num_in_batch
-                    progress_percentage = 0.5 + (processed_images_count / len(s3_uris_for_api) * 0.5)
-                    progress_text_api = f"Procesadas {processed_images_count}/{len(s3_uris_for_api)} imágenes..."
+                    progress_percentage = 0.5 + (
+                        processed_images_count / len(s3_uris_for_api) * 0.5
+                    )
+                    progress_text_api = (
+                        f"Procesadas {processed_images_count}/{len(s3_uris_for_api)} imágenes..."
+                    )
                     progress_bar.progress(progress_percentage, text=progress_text_api)
-
 
                 #  Procesamiento final de todos los resultados acumulados
                 if all_batch_responses:
@@ -226,7 +245,9 @@ def main():
                             # Esto captura imágenes que estaban en lotes fallidos
                             continue
                         elif name:
-                            endpoint_results.append((name, False, "No se recibió respuesta del API para esta imagen."))
+                            endpoint_results.append(
+                                (name, False, "No se recibió respuesta del API para esta imagen.")
+                            )
 
             progress_bar.progress(1.0, text="¡Proceso completado!")
 
@@ -245,7 +266,8 @@ def main():
 
                 if endpoint_success_cnt == 0:
                     st.error(
-                        f"Fallo persistente llamando al end point de detección: {ENDPOINT_URL}"
+                        f"Fallo persistente llamando al end point de "
+                        f"detección: {PREDICTMANY_ENDPOINT_URL}"
                     )
                 elif endpoint_success_cnt < len(successful_uploads):
                     success_ratio = endpoint_success_cnt / len(successful_uploads)
@@ -261,10 +283,10 @@ def main():
                                 st.json(response)
                             else:
                                 st.error(f"{name}: {response}")
-            
+
             # --- Almacenar resultados en el historial de la sesión ---
-            if 'detection_history' not in st.session_state:
-                st.session_state['detection_history'] = []
+            if "detection_history" not in st.session_state:
+                st.session_state["detection_history"] = []
 
             if endpoint_results:
                 for name, success, response in endpoint_results:
@@ -272,14 +294,16 @@ def main():
                         s3_key = next((k for n, k, u in successful_uploads if n == name), None)
                         if s3_key:
                             # Añadir el resultado al historial persistente
-                            st.session_state['detection_history'].append({
-                                "name": name,
-                                "s3_uri": f"s3://{S3_BUCKET}/{s3_key}",
-                                "detections": response.get("detections", {}),
-                                "finca": finca,
-                                "sobrevuelo": sobrevuelo
-                            })
-            
+                            st.session_state["detection_history"].append(
+                                {
+                                    "name": name,
+                                    "s3_uri": f"s3://{S3_BUCKET}/{s3_key}",
+                                    "detections": response.get("detections", {}),
+                                    "finca": finca,
+                                    "sobrevuelo": sobrevuelo,
+                                }
+                            )
+
             st.toast(f"¡Procesamiento completado para {len(endpoint_results)} imágenes!", icon="🎉")
 
 

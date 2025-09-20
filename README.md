@@ -71,7 +71,7 @@ Se debe ejecutar el script `api/run_api.py` asegurándose de que al menos la var
 Ejemplo:
 ```bash
 export AWS_PROFILE="dvc-user"
-export MODEL_PATH="data/training/v1/faster-rcnn/model.pth"
+export MODEL_PATH="data/training/teo/v1/faster-rcnn/model.pth"
 python api/run_api.py
 ```
 
@@ -143,6 +143,44 @@ Este proyecto utiliza [Poe the Poet](https://github.com/nat-n/poe-the-poet) para
     ```
 
     Este comando se encargará de establecer la variable de entorno `AWS_PROFILE=dvc-user` y lanzar la aplicación, que estará disponible en `http://localhost:8501`.
+
+### Dockerización de Streamlit
+
+La aplicación Streamlit se puede ejecutar en Docker usando el archivo `dashboard/Dockerfile`:
+
+1. **Construir la imagen Docker:**
+   ```bash
+   docker build -t cowd-streamlit -f dashboard/Dockerfile .
+   ```
+
+2. **Ejecutar el contenedor con credenciales AWS:**
+   
+   Opción 1 - Usando perfil AWS local:
+   ```bash
+   docker run -p 8501:8501 \
+     -e AWS_PROFILE='dvc-user' \
+     -v $HOME/.aws:/root/.aws:ro \
+     cowd-streamlit
+   ```
+   
+   Opción 2 - Usando credenciales explícitas:
+   ```bash
+   export AWS_ACCESS_KEY_ID=....
+   export AWS_SECRET_ACCESS_KEY=....
+   docker run -p 8501:8501 \
+     -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+     -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+     cowd-streamlit
+   ```
+
+   Para configurar la Url base del endpoint del api, se dispone de la variable 
+   de entorno `APISERVICE_BASE_URL`. si no de define el valor por defecto es
+   `http://localhost:8000`.  
+
+3. **Acceder a la aplicación:**
+   Una vez ejecutado, la aplicación estará disponible en `http://localhost:8501`
+
+**Nota:** Para que la aplicación Streamlit pueda comunicarse con el API, asegúrate de que el API esté ejecutándose y accesible. Si ambos servicios están en Docker, considera usar una red Docker compartida.
 
 
 

@@ -1,55 +1,77 @@
-FROM python:3.13-slim
+# -------------------------
+# Etapa 1: builder
+# -------------------------
+FROM python:3.13-slim AS builder
 
 ENV PYTHONBUFFERED=1 \
-    PYTHONDONTWRITEBYCODE=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     UV_CACHE_DIR=/tmp/uv-cache
 
-# Crear usuario que ejecuta la app
-# RUN adduser --disabled-password --gecos '' api-user
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN apt-get update && apt-get install -y git && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Definir directorio de trabajo
-WORKDIR /opt/cow-detect
+RUN adduser --disabled-password --gecos '' api-user
 
-# Instalar dependencias
-COPY .python-version .
-COPY README.md .
-COPY uv.lock .
-COPY pyproject.toml .
+RUN pip install uv
 
-# Model weights copied into image here:`
-# If changing model path change the following TWO LINES!
-COPY data/training/teo/v1/faster-rcnn/model.pth  data/training/teo/v1/faster-rcnn/model.pth
-ENV MODEL_PATH=data/training/teo/v1/faster-rcnn/model.pth
-###
-RUN find ./data
 
-RUN pwd
-RUN ls -lrt
+WORKDIR /app
 
-RUN uv cache dir
-# Run with mounted cached so that we don´t download all packages everytime...
-# Install dependencies only but not the project
-RUN --mount=type=cache,target=/tmp/uv-cache \
-   uv sync --frozen --link-mode=copy --no-dev --no-install-project --group torch-train
-
-COPY cow_detect/  cow_detect/
+COPY .python-version ./
+COPY pyproject.toml ./
+COPY README.md ./
+COPY uv.lock ./
+COPY dvc.yaml ./
+COPY dvc.lock ./
+COPY .dvc/ .dvc/
+COPY .dvcignore ./
+COPY data/.gitignore data/.gitignore
 COPY api/ api/
 
-RUN ls -lrt
+RUN uv cache dir
 
-# Hacer el directorio de trabajo ejecutable
-# RUN chown -R api-user:api-user ./
+RUN --mount=type=cache,id=s/4ea0a428-f8cf-4f69-a0dd-68c65a55469b-/tmp/uv-cache,target=/tmp/uv-cache \
+    uv sync --frozen --link-mode=copy --no-dev --no-install-project --only-group api-deps
 
-USER root
+
+RUN git init && \
+    uv run --no-sync dvc remote modify aws-remote --unset profile && \
+    uv run --no-sync dvc pull data/training/teo/v1/faster-rcnn/model.pth && \
+    rm -rf .dvc .git
+
+
+RUN uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+    
+
+ENV MODEL_PATH=data/training/teo/v1/faster-rcnn/model.pth
+
+RUN chown -R api-user:api-user /app
+
+
+# -------------------------
+# Etapa 2: final
+# -------------------------
+FROM python:3.13-slim
+
+ENV MODEL_PATH=data/training/teo/v1/faster-rcnn/model.pth \
+    UVICORN_PORT=8000 \
+    UVICORN_RELOAD=false \
+    PYTHONBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
+
+RUN adduser --disabled-password --gecos '' api-user
+
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+RUN chown -R api-user:api-user /app
+
+USER api-user
 
 EXPOSE 8000
 
-ENV UVICORN_PORT=8000
-ENV UVICORN_RELOAD=false
-
-
-RUN uv pip install -e "."
-
-CMD ["uv", "run", "--no-sync", "python", "api/run_api.py"]
+CMD ["/app/.venv/bin/python", "api/run_api.py"]
