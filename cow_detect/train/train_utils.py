@@ -6,6 +6,7 @@ import yaml
 from loguru import logger
 from pydantic import BaseModel
 from torch import nn
+from torch.optim.optimizer import ParamsT
 
 from cow_detect.utils.versioning import get_cfg_hash
 
@@ -25,3 +26,19 @@ def save_model_and_version(
         )
     )
     logger.info(f"Fine-tuning complete. Model saved to: {save_path!s}")
+
+
+def get_optimizer(
+    optimizer_class: str,
+    model_params: ParamsT,
+    opt_kwargs: dict[str, object],
+) -> torch.optim.Optimizer:
+    """Generic optimizer factory."""
+    if optimizer_class == "SGD":
+        return torch.optim.SGD(model_params, **opt_kwargs)
+    elif optimizer_class == "Adam":
+        return torch.optim.Adam(model_params, **opt_kwargs)
+    elif optimizer_class == "AdamW":
+        return torch.optim.AdamW(model_params, **opt_kwargs)
+    else:
+        raise ValueError(f"{optimizer_class} is not yet supported")

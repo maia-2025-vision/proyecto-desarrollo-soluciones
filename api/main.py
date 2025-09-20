@@ -29,10 +29,11 @@ async def lifespan(app: FastAPI):
     aws_secret_is_defined = os.getenv("AWS_SECRET_ACCESS_KEY") is not None
 
     if aws_profile is None and (aws_key_id is None or not aws_secret_is_defined):
-        logger.error("Need to provide at least AWS_PROFILE env var,"
-        " or both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+        logger.error(
+            "Need to provide at least AWS_PROFILE env var,"
+            " or both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
+        )
         raise RuntimeError("No AWS credentials!")
-
 
     model_weights_path = Path(model_path)
     pt_model = get_prediction_model(model_weights_path)

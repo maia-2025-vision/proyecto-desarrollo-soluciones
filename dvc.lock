@@ -344,8 +344,8 @@ stages:
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: ff2f782c9396c1e54679186b37b16fed
-      size: 11218
+      md5: cf33ebfb320d1d5fbaae8ffb54e0154b
+      size: 12280
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -353,11 +353,36 @@ stages:
       size: 8766
     - path: data/training/teo/v1/faster-rcnn/model.pth
       hash: md5
-      md5: a70730bcffda54ee5d5f539b06634057
+      md5: d31635a041c10e013c94c1bcdb4327ff
       size: 165704279
     outs:
     - path: data/evaluation/eval-v1-over-sky2
       hash: md5
-      md5: 8bf91997ffdc02ec1413ab40e3236f4e.dir
-      size: 36144
+      md5: b7ce5ccc3583af93437ad19dfd340dca.dir
+      size: 36494
       nfiles: 2
+  train-v2-1-sky1:
+    cmd: python cow_detect/train/teo/train_v2_std.py --cfg 
+      cow_detect/train/teo/train_cfg_v2-1.yaml --device cuda --train-data 
+      data/standardized/sky.dataset1.jsonl --train-data-fraction 1.0 
+      --valid-data data/standardized/sky.dataset2.jsonl --valid-data-fraction 
+      1.0 --save-path data/training/teo/v2-1-sky1
+    deps:
+    - path: cow_detect/train/teo/train_cfg_v2-1.yaml
+      hash: md5
+      md5: eb0bb735a3d8b96e4ababc5254958bc5
+      size: 302
+    - path: data/standardized/sky.dataset1.jsonl
+      hash: md5
+      md5: 314f57c2459eb37ce238aec6b38cb0ab
+      size: 350340
+    - path: data/standardized/sky.dataset2.jsonl
+      hash: md5
+      md5: 6ed894c1a47b64ea9f517b1276de9f16
+      size: 8766
+    outs:
+    - path: data/training/teo/v2-1-sky1
+      hash: md5
+      md5: b6600e8f676e7c3d3462f1e44841bc2c.dir
+      size: 165709551
+      nfiles: 3

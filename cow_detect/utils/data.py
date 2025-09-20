@@ -68,6 +68,11 @@ def zip_dict(a_dict_of_lists: dict[str, list]) -> list[dict]:
     return [{k: a_dict_of_lists[k][i] for k in keys} for i in range(n)]
 
 
+def remove_keys(a_dict: dict[str, object], *keys: str) -> dict[str, object]:
+    """Produce a (shallow) copy of a_dict but with keys in `keys` removed."""
+    return {k: v for k, v in a_dict.items() if k not in set(keys)}
+
+
 def filter_bboxes_for_classes(
     boxes0: list[list], label_strs: list[str], cls_name_to_id: dict[str, int]
 ) -> tuple[list[list], list[int]]:
