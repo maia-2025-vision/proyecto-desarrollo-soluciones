@@ -1,35 +1,54 @@
-# Manual de Instalación 
+# Manual de instalación: Instrucciones para ejecutar el proyecto con Docker Compose
 
-A continuación se presenta el manual de instalación de la solución en una máquina local, 
+## 1. Pre-requisitos
 
-Ofrecemos esta opción como una opción ligera para uso privado en casos en que solo se requiera acceso para 
-un usuario.
-La ventaja de esta opción es que se evita tener que hacer el montaje de la solución en ECS o Railway.
+- Docker y Docker Compose instalados: https://docs.docker.com/desktop/
+- AWS CLI configurado con credenciales (`aws configure`)
 
+## 2. Descargar docker-compose.yml
 
-## 0 Prerrequisitos:
-
-- Instalar Docker desktop en la máquina. Instrucciones detalladas aquí https://docs.docker.com/desktop/
-- Crear un bucket de S3 en AWS y obtener credenciales (access_key_id y secret_access_key) 
-que permitan acceso de lectura y escritura al mismo.
-- Crear un archivo de texto plano con esta información así, ejemplo: 
+Descarga el archivo de configuración:
 
 ```bash
-# nombre de archivo: env.secrets
-AWS_ACCESS_KEY_ID=AKIA555555555555555
-AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
-S3_BUCKET=bucket-name-here
+wget https://raw.githubusercontent.com/maia-2025-vision/proyecto-desarrollo-soluciones/refs/heads/main/docker-compose.yml
 ```
 
-## 1. Descargar docker-compose.yml del repo
+O cópialo desde: https://raw.githubusercontent.com/maia-2025-vision/proyecto-desarrollo-soluciones/refs/heads/main/docker-compose.yml
 
-Descargar el archivo [docker-compose.yml](https://raw.githubusercontent.com/maia-2025-vision/proyecto-desarrollo-soluciones/refs/heads/main/docker-compose.yml) desde el repo de github.
+## 3. Configurar credenciales AWS
 
+Crea un archivo `.aws-credentials` en la misma carpeta del `docker-compose.yml`:
 
-## 2. Arrancar el APP con docker compose
+```ini
+[default]
+aws_access_key_id = TU_ACCESS_KEY
+aws_secret_access_key = TU_SECRET_KEY
+```
+
+## 4. Configurar bucket S3 (opcional)
+
+Para usar un bucket S3 diferente, modifica la variable `S3_BUCKET` en el `docker-compose.yml`:
+
+```yaml
+environment:
+  - S3_BUCKET=tu-bucket-personalizado
+```
+
+Si no se especifica, usa por defecto: `cow-detect-maia`
+
+## 5. Ejecutar
 
 ```bash
-docker compose up
+docker-compose up
 ```
 
-Después del arranque, el dashboard estará disponible en `http://0.0.0.0:8501`
+## 6. Acceso
+
+- **Dashboard**: http://localhost:8501
+- **API**: http://localhost:8000
+
+## 7. Detener
+
+```bash
+docker-compose down
+```
