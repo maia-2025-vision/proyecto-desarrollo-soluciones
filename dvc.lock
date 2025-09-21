@@ -296,8 +296,8 @@ stages:
     deps:
     - path: cow_detect/eval/evaluate.py
       hash: md5
-      md5: ff2f782c9396c1e54679186b37b16fed
-      size: 11218
+      md5: cf33ebfb320d1d5fbaae8ffb54e0154b
+      size: 12280
       isexec: true
     - path: data/standardized/sky.dataset2.jsonl
       hash: md5
@@ -310,8 +310,8 @@ stages:
     outs:
     - path: data/evaluation/eval-v2-sky1-over-sky2
       hash: md5
-      md5: 499ed57945ac226d966ffe3b9eefb93a.dir
-      size: 32586
+      md5: 8a58553516d1217d2807f2aea1de058e.dir
+      size: 32582
       nfiles: 2
   eval-v2-derval-over-mauron:
     cmd: cow_detect/eval/evaluate.py data/training/teo/v2-derval/model.pth 
@@ -386,3 +386,27 @@ stages:
       md5: b6600e8f676e7c3d3462f1e44841bc2c.dir
       size: 165709551
       nfiles: 3
+  eval-v2-derval-over-jalogny:
+    cmd: cow_detect/eval/evaluate.py data/training/teo/v2-derval/model.pth 
+      data/standardized/icaerus.jalogny.jsonl --out 
+      data/evaluation/eval-v2-derval-over-jalogny
+    deps:
+    - path: cow_detect/eval/evaluate.py
+      hash: md5
+      md5: cf33ebfb320d1d5fbaae8ffb54e0154b
+      size: 12280
+      isexec: true
+    - path: data/standardized/icaerus.jalogny.jsonl
+      hash: md5
+      md5: da05ce1bbfdf24bf99b0554713d44d03
+      size: 327079
+    - path: data/training/teo/v2-derval/model.pth
+      hash: md5
+      md5: 1b635bed4abbbbd9dcaf165b40deecce
+      size: 165704279
+    outs:
+    - path: data/evaluation/eval-v2-derval-over-jalogny
+      hash: md5
+      md5: b22c4bbe68a9d9d703ec5109d40229ee.dir
+      size: 1827829
+      nfiles: 2
