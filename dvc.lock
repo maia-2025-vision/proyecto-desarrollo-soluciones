@@ -370,8 +370,8 @@ stages:
     deps:
     - path: cow_detect/train/teo/train_cfg_v2-1.yaml
       hash: md5
-      md5: eb0bb735a3d8b96e4ababc5254958bc5
-      size: 302
+      md5: 1692632449d6f916fc7bff5d113d4876
+      size: 303
     - path: data/standardized/sky.dataset1.jsonl
       hash: md5
       md5: 314f57c2459eb37ce238aec6b38cb0ab
@@ -383,6 +383,6 @@ stages:
     outs:
     - path: data/training/teo/v2-1-sky1
       hash: md5
-      md5: b6600e8f676e7c3d3462f1e44841bc2c.dir
-      size: 165709551
+      md5: b019716e813b060d310d0903e9c7d7b2.dir
+      size: 165709552
       nfiles: 3
