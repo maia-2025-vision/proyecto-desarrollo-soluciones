@@ -167,20 +167,6 @@ stages:
     - data/standardized/sky.dataset2.jsonl
     outs: [data/evaluation/eval-v1-over-sky2]
 
-  eval-v2-sky1-over-sky1:
-    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
-    cmd: >-
-      cow_detect/eval/evaluate.py
-      data/training/teo/v2-sky1/model.pth
-      data/standardized/sky.dataset1.jsonl
-      --out data/evaluation/eval-v2-sky1-over-sky1
-    deps:
-    - cow_detect/eval/evaluate.py
-    - data/training/teo/v2-sky1/model.pth
-    - data/standardized/sky.dataset1.jsonl
-    outs: [data/evaluation/eval-v2-sky1-over-sky1]
-
-
   eval-v2-sky1-over-sky2:
     # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
     cmd: >-
