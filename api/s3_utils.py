@@ -11,7 +11,7 @@ from loguru import logger
 
 logger.info(
     f"Env var AWS_PROFILE={os.getenv('AWS_PROFILE')!r}, AWS_ACCESS_KEY_ID={os.getenv('AWS_ACCESS_KEY_ID')!r}, "
-    f"AWS_SECRET_ACCESS_KEY is defined: {os.geten('AWS_SECRET_ACCESS_KEY') is not None}"
+    f"AWS_SECRET_ACCESS_KEY is defined: {os.getenv('AWS_SECRET_ACCESS_KEY') is not None}"
 )
 
 
@@ -22,7 +22,9 @@ session = (
 )
 
 s3_client = session.client("s3")
-bucket = "cow-detect-maia"
+bucket = os.getenv("S3_BUCKET", "cow-detect-maia")
+
+logger.info(f"S3 Bucket name: {bucket!r}")
 
 
 def parse_s3_url(url: str) -> tuple[str, str]:

@@ -42,7 +42,7 @@ RUN git init && \
     rm -rf .dvc .git
 
 
-RUN uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN uv pip install torch torchvision --native-tls --index-url https://download.pytorch.org/whl/cpu
     
 
 ENV MODEL_PATH=data/training/teo/v1/faster-rcnn/model.pth

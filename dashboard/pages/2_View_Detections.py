@@ -1,7 +1,6 @@
 import io
 
 import streamlit as st
-from botocore.exceptions import ClientError, NoCredentialsError
 from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 

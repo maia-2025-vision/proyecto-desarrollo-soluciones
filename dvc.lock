@@ -370,8 +370,8 @@ stages:
     deps:
     - path: cow_detect/train/teo/train_cfg_v2-1.yaml
       hash: md5
-      md5: eb0bb735a3d8b96e4ababc5254958bc5
-      size: 302
+      md5: 4571f8e90311b3f010b64680ee1191c3
+      size: 303
     - path: data/standardized/sky.dataset1.jsonl
       hash: md5
       md5: 314f57c2459eb37ce238aec6b38cb0ab
@@ -383,8 +383,8 @@ stages:
     outs:
     - path: data/training/teo/v2-1-sky1
       hash: md5
-      md5: b6600e8f676e7c3d3462f1e44841bc2c.dir
-      size: 165709551
+      md5: ba5501324a042ac0b01e5c8bc18bceab.dir
+      size: 165709552
       nfiles: 3
   eval-v2-derval-over-jalogny:
     cmd: cow_detect/eval/evaluate.py data/training/teo/v2-derval/model.pth 
