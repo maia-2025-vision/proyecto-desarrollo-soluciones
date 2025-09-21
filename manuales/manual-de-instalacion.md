@@ -23,11 +23,10 @@ S3_BUCKET=bucket-name-here
 
 ## 1. Descargar docker-compose.yml del repo
 
-Descargar el archivo [docker-compose.yml](https://github.com/maia-2025-vision/proyecto-desarrollo-soluciones/raw/refs/heads/main/docker-compose.yaml) desde el repo de github.
+Descargar el archivo [docker-compose.yml](https://raw.githubusercontent.com/maia-2025-vision/proyecto-desarrollo-soluciones/refs/heads/main/docker-compose.yml) desde el repo de github.
 
 
 ## 2. Arrancar el APP con docker compose
-
 
 ```bash
 docker compose up
