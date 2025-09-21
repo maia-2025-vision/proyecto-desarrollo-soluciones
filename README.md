@@ -81,13 +81,16 @@ La consulta de los endpoints se encuentra en [localhost:8000](http://localhost:8
 
 ## Dockerización y Ejecución dentro de docker
 
-El api se dockeriza con el comando:
+El API se dockeriza con el comando:
 
 ```bash
 poe dockerize-api
 ```
 
-Este comando ejecuta algo similar a esto: `docker build --progress=plain -t cowd-api -f api/Dockerfile .`
+Este comando ejecuta algo similar a esto:
+`docker build --no-cache -f ./api/Dockerfile -t cow-api \
+  --build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .`
 
 
 Notar que el modelo está "quemado" dentro de la imagen de docker.

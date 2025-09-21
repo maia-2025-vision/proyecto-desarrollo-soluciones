@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  api:
+    # PENDING change image to full reference to remote public ECR repo
+    image: cow-api
+    ports:
+      - "8000:8000"
+    networks:
+      - cow-detect-network
+    env_file:
+      - env.secrets
+
+  dashboard:
+    # PENDING change image to full reference to remote public ECR repo
+    image: cowd-dashboard
+    ports:
+      - "8501:8501"
+    networks:
+      - cow-detect-network
+    env_file:
+      - env.secrets
+    environment:
+      APISERVICE_BASE_URL: "http://api:8000"
+
+networks:
+  cow-detect-network:
+    driver: bridge
