@@ -8,18 +8,23 @@ from loguru import logger
 # When running with docker AWS_PROFILE env var should NOT be set
 # instead AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env vars should be
 # provided to the container by the external environment
-AWS_PROFILE = os.getenv("AWS_PROFILE")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
 
 logger.info(
-    f"AWS_PROFILE={AWS_PROFILE!r}, AWS_ACCESS_KEY_ID={AWS_ACCESS_KEY_ID}, "
-    f"AWS_SECRET_ACCESS_KEY is defined: {AWS_SECRET_ACCESS_KEY is not None}"
+    f"Env var AWS_PROFILE={os.getenv('AWS_PROFILE')!r}, AWS_ACCESS_KEY_ID={os.getenv('AWS_ACCESS_KEY_ID')!r}, "
+    f"AWS_SECRET_ACCESS_KEY is defined: {os.getenv('AWS_SECRET_ACCESS_KEY') is not None}"
 )
 
-session = boto3.Session(profile_name=AWS_PROFILE)
+
+session = (
+    boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
+    if os.getenv("AWS_PROFILE")
+    else boto3.Session()
+)
+
 s3_client = session.client("s3")
-bucket = "cow-detect-maia"
+bucket = os.getenv("S3_BUCKET", "cow-detect-maia")
+
+logger.info(f"S3 Bucket name: {bucket!r}")
 
 
 def parse_s3_url(url: str) -> tuple[str, str]:
@@ -81,6 +86,17 @@ def upload_json_to_s3(prediction: dict, image_url: str):
     )
 
     return f"s3://{bucket}/{json_key}"
+
+
+def list_farms_folders() -> list[str]:
+    """Lista las granjas disponibles.
+
+    Returns:
+        list[str]: Nombres de las granjas.
+    """
+    response = s3_client.list_objects_v2(Bucket=bucket, Delimiter="/")
+    farms = [cp["Prefix"].rstrip("/").split("/")[-1] for cp in response.get("CommonPrefixes", [])]
+    return farms
 
 
 def list_flyover_folders(farm: str) -> list[str]:

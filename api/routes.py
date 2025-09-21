@@ -17,9 +17,10 @@ from api.req_resp_types import (
     PredictManyResult,
     PredictOneRequest,
 )
-from api.utils import (
+from api.s3_utils import (
     download_file_from_s3,
     get_predictions_from_s3_folder,
+    list_farms_folders,
     list_flyover_folders,
     upload_json_to_s3,
 )
@@ -109,6 +110,16 @@ def predict_one(url: str) -> PredictionResult:
         )
 
     return pred_result
+
+
+@router.get("/farms")
+def list_farms() -> dict[str, list[str]]:
+    """Lista las granjas que han generado datos de sobrevuelos."""
+    try:
+        farms = list_farms_folders()
+        return {"farms": farms}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al listar las granjas: {str(e)}") from e
 
 
 @router.get("/flyovers/{farm}")

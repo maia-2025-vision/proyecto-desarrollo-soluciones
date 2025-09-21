@@ -264,7 +264,7 @@ DEFAULT_LABEL_TO_ID: dict[str, int] = {"cow": 1, "cattle": 1, "calf": 1}
 
 
 class TrainCfgV2(BaseModel):
-    """Parameters fort training."""
+    """Training params."""
 
     experiment_name: str
     train_fraction: float | None = None
