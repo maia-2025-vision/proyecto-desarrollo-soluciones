@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 
 import boto3
 import requests
@@ -14,13 +13,17 @@ st.markdown(
     "Carga imágenes y ejecutar detección sobre las mismas"
 )  # Eliminé 'al bucket S3 cow-detect-maia' para simplificar la UI para el usuario final.
 
-S3_BUCKET = "cow-detect-maia"
+S3_BUCKET = os.getenv("S3_BUCKET", "cow-detect-maia")
 API_BASE_URL = os.getenv("APISERVICE_BASE_URL", "http://localhost:8000")
 # ENDPOINT_URL = "https://example.com"  # Configura aquí la URL de tu endpoint
 # PREDICT_ENDPOINT_URL = f"{API_BASE_URL}/predict" # Endpoint antiguo
 PREDICTMANY_ENDPOINT_URL = (
     f"{API_BASE_URL}/predict-many"  # MODIFICADO: Usando el nuevo endpoint para lotes
 )
+
+logger.info(f"{__name__} module loading...")
+logger.info(f"env var: S3_BUCKET={S3_BUCKET!r}")
+logger.info(f"env var: APISERVICE_BASE_URL={API_BASE_URL!r}")
 
 
 @st.cache_resource
