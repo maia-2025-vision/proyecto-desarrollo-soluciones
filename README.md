@@ -87,18 +87,15 @@ El API se dockeriza con el comando:
 poe dockerize-api
 ```
 
-Este comando ejecuta algo similar a esto:
-`docker build --no-cache -f ./api/Dockerfile -t cow-api \
-  --build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-  --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY .`
+Este comando ejecuta algo similar a esto, el path de las credenciales aws, dependen del entorno en el que se configuraron. Este es el ejemplo para ejecución en linux:
+
+`docker build --secret id=aws,src=$HOME/.aws/credentials \ 
+-f ./api/Dockerfile -t cowd-api .`
 
 
 Notar que el modelo está "quemado" dentro de la imagen de docker.
 
-Si se quiere cambiar el modelo hay que cambiar dos líneas de `api/Dockerfile`.
-1. La línea justo después del comentario `# Model weights copied into image here:` (cambiar ambas menciones a ruta externa y ruta interna)
-2. La línea que define la variable de entorno MODEL_PATH dentro del contenedor: `ENV MODEL_PATH=....`
-
+Si se quiere cambiar el modelo hay que cambiar las referencias dentro de `api/Dockerfile`. modificando los paths en la descarga desde el dvc y en las definiciones de `ENV MODEL_PATH=....`
 
 Para ejecutar el api desde docker y exponer el puerto 8000 compartiendo las credenciales configuradas arriba:
 
@@ -116,7 +113,6 @@ docker run -p 8000:8000 \
     -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
     cowd-api
 ```
-
 
 
 ## Aplicación Streamlit
