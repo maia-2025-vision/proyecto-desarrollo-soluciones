@@ -35,9 +35,9 @@ RUN uv cache dir
 RUN --mount=type=cache,id=s/4ea0a428-f8cf-4f69-a0dd-68c65a55469b-/tmp/uv-cache,target=/tmp/uv-cache \
     uv sync --frozen --link-mode=copy --no-dev --no-install-project --only-group api-deps
 
-
-RUN git init && \
-    uv run --no-sync dvc remote modify aws-remote --unset profile && \
+RUN --mount=type=secret,id=aws \
+    export AWS_SHARED_CREDENTIALS_FILE=/run/secrets/aws && \
+    git init && \
     uv run --no-sync dvc pull data/training/teo/v1/faster-rcnn/model.pth && \
     rm -rf .dvc .git
 

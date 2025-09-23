@@ -173,7 +173,7 @@ shell="AWS_PROFILE=dvc-user uv run streamlit run dashboard/streamlit_app.py"
 [tool.poe.tasks.dockerize-api]
 help="Package the API in as a docker image"
 # shell="docker build --progress=plain -t cowd-api -f api/Dockerfile  ."
-shell="""docker build -f ./api/Dockerfile -t cow-api \
+shell="""docker build -f ./api/Dockerfile -t cowd-api \
     --build-arg AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
     --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
     ."""
