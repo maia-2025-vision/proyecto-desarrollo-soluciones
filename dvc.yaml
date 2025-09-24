@@ -154,22 +154,6 @@ stages:
     outs:
       - data/training/teo/v2-1-sky1
 
-  train-v2-3-sky1:
-    cmd: >-
-      python cow_detect/train/teo/train_v2_std.py
-      --cfg cow_detect/train/teo/train_cfg_v2-3.yaml
-      --device cuda
-      --train-data data/standardized/sky.dataset1.jsonl
-      --train-data-fraction 1.0
-      --valid-data data/standardized/sky.dataset2.jsonl
-      --valid-data-fraction 1.0
-      --save-path data/training/teo/v2-3-sky1
-    deps:
-      - data/standardized/sky.dataset1.jsonl
-      - data/standardized/sky.dataset2.jsonl
-    outs:
-      - data/training/teo/v3-sky1
-
   eval-v1-over-sky2:
     # First example of evaluation on small dataset
     cmd: >-
@@ -182,20 +166,6 @@ stages:
     - data/training/teo/v1/faster-rcnn/model.pth
     - data/standardized/sky.dataset2.jsonl
     outs: [data/evaluation/eval-v1-over-sky2]
-
-  eval-v2-sky1-over-sky1:
-    # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
-    cmd: >-
-      cow_detect/eval/evaluate.py
-      data/training/teo/v2-sky1/model.pth
-      data/standardized/sky.dataset1.jsonl
-      --out data/evaluation/eval-v2-sky1-over-sky1
-    deps:
-    - cow_detect/eval/evaluate.py
-    - data/training/teo/v2-sky1/model.pth
-    - data/standardized/sky.dataset1.jsonl
-    outs: [data/evaluation/eval-v2-sky1-over-sky1]
-
 
   eval-v2-sky1-over-sky2:
     # Evalúa modelo v2-sky1 sobre conjunto de datos sky2
